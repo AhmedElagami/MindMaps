@@ -56,10 +56,7 @@
         - Control Plane Nodes
           - Linux OS Requirement
           - Control Plane Services
-          - [High Availability](Cka/HighAvailability.md)
-            - Multi-Node Deployment
-            - Cross-Availability Zone Spreading
-            - Fault Tolerance Benefits
+          - High Availability (see etcd High Availability section)
         - [Worker Nodes](Cka/WorkerNodes.md)
           - Run business applications
           - Primarily Linux; Windows support is niche
@@ -114,7 +111,7 @@
         - [Enhanced Portability](Cka/EnhancedPortability.md)
       - [Container Runtimes](Cka/ContainerRuntimes.md)
         - [Containerd Runtime](Cka/ContainerdRuntime.md)
-        - CRI-O Runtime
+        - ⚠️ CRI-O Runtime (niche)
         - [Enhanced Runtimes](Cka/EnhancedRuntimes.md)
           - gVisor
           - Kata Containers
@@ -129,8 +126,7 @@
             - Cluster Maintenance
             - [Cert Management](Cka/CertManagement.md)
             - Cluster Add-ons
-              - [CoreDNS](Cka/CorednsArchitecture.md)
-              - [metrics-server](Cka/MetricsServer.md)
+              - [DNS add-on (CoreDNS)](Cka/CorednsArchitecture.md) (see Networking)
           - Security and Access Control
             - RBAC
             - Service Accounts
@@ -229,12 +225,12 @@
           - CronJobs
             - Scheduled workloads
             - Time-based execution
-          - [Static Pods](Cka/StaticPods.md)
+          - ⚠️ [Static Pods](Cka/StaticPods.md)
           - [Autoscaling](Cka/Autoscaling.md)
             - HorizontalPodAutoscaler (HPA)
-              - Depends on metrics-server
+              - Depends on metrics-server (see Monitoring)
               - Scales replicas based on CPU/memory/metrics
-            - VerticalPodAutoscaler (VPA)
+            - ⚠️ VerticalPodAutoscaler (VPA)
               - Adjusts Pod resource requests/limits
               - Not native in all clusters
             - Cluster Autoscaler
@@ -451,7 +447,7 @@
         - [Short Name Local Resolution](Cka/ShortNameLocalResolution.md)
       - [CoreDNS Architecture](Cka/CorednsArchitecture.md)
         - CoreDNS Deployment
-        - [kube-dns Service Configuration](Cka/KubeDnsServiceConfiguration.md)
+        - ⚠️ [kube-dns Service Configuration](Cka/KubeDnsServiceConfiguration.md)
         - EndpointSlice Management
     - [Network Routing](Cka/NetworkRouting.md)
       - [ClusterIP Routing](Cka/ClusteripRouting.md)
