@@ -4,7 +4,7 @@
 
 When desired state and observed state don't match, a controller starts a reconciliation process to bring observed state into sync with desired state.
 
-## Reconciliation Loop
+## Loop Mechanics
 ## Content
 
 ### ❓ How does the ReplicaSet controller function as a background process to maintain the desired number of Pod replicas and what specific actions does it take when there are too few or too many Pod replicas running?
@@ -18,7 +18,7 @@ Kubernetes implements ReplicaSets as a background controller running in a reconc
 Assume a scenario where your desired state is ten replicas, but only eight are present. It makes no difference if this is due to failures or if an autoscaler has requested an increase. Either way, the ReplicaSet controller creates two new replicas to sync observed state with desired state. The exact same reconciliation process enables self-healing, scaling, rollouts, and rollbacks.
 
 
-## Deployment and State Reconciliation
+## State Synchronization
 ## Content
 
 ### ❓ Explain the process of how a Deployment controller handles Pod failures, scaling demands, and application updates according to the theory section.

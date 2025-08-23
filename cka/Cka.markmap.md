@@ -120,10 +120,6 @@
         - [Enhanced Runtimes](Cka/EnhancedRuntimes.md)
           - gVisor
           - Kata Containers
-    - [Cloud-Native Features](Cka/CloudNativeFeatures.md)
-      - Self-Healing Capability
-      - [Rollback Functionality](Cka/RollbackFunctionality.md)
-      - Default Namespace Behavior
     - [Programming Models](Cka/ProgrammingModels.md)
       - [Declarative Model](Cka/DeclarativeModel.md)
       - [Imperative Model](Cka/ImperativeModel.md)
@@ -140,16 +136,11 @@
 	  - [Cluster Maintenance](Cka/ClusterMaintenance.md)
 	    - Node cordon/drain/uncordon
 	    - Resource cleanup
-	  - Cluster Add-ons
-		  - [CoreDNS](Cka/CoreDNS.md) → see Networking → CoreDNS
-		  - kube-proxy (see Worker Node Components)
-		    - iptables/ipvs mode
-		    - Service routing
-		  - [metrics-server](Cka/MetricsServer.md)  → see Observability → Monitoring
-		  - [Dashboard](Cka/Dashboard.md)
-		    - Web UI for Kubernetes
-		    - RBAC considerations
-		  - [Ingress Controllers](Cka/IngressControllers.md)  → see Networking → Ingress Architecture
+          - Cluster Add-ons
+            - [CoreDNS](Cka/CorednsArchitecture.md)
+            - [Ingress Controllers](Cka/IngressControllers.md)
+            - [metrics-server](Cka/MetricsServer.md)
+            - kube-proxy ([KubeProxy Operations](Cka/KubeProxyOperations.md), [Worker Node Components](Cka/WorkerNodeComponents.md))
 	- Cloud and Hybrid Kubernetes
 	  - [Managed Control Planes](Cka/ManagedControlPlanes.md)
 	    - GKE (Google Kubernetes Engine)
@@ -208,7 +199,7 @@
           - Shared IP Address
           - Shared Network Resources
           - Shared Volumes
-      - [Lifecycle Management](Cka/LifecycleManagement.md)
+      - [Lifecycle Management (Phases & Policies)](Cka/LifecycleManagement.md)
         - [Lifecycle Phases](Cka/LifecyclePhases.md)
           - Pending Phase
           - Running Phase
@@ -222,11 +213,15 @@
           - Privileged Policy
           - Baseline Policy
           - [Restricted Policy](Cka/RestrictedPolicy.md)
-        - [Security Admission](Cka/SecurityAdmission.md)
+        - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
           - Enforcement Modes
             - Warn Mode
             - Audit Mode
             - Enforce Mode
+    - [Cloud-Native Features](Cka/CloudNativeFeatures.md)
+      - Self-Healing Capability
+      - [Rollback Functionality](Cka/RollbackFunctionality.md)
+      - Default Namespace Behavior
     - [Deployment Architecture](Cka/DeploymentArchitecture.md)
       - [Deployment-ReplicaSet Relationship](Cka/DeploymentReplicasetRelationship.md)
         - Hierarchical Controller Relationship
@@ -295,15 +290,13 @@
         - Pod Age Indicators
         - DNS Hostname
         - Lifecycle Persistence
-      - Pod Execution Management
+      - Execution Lifecycle (Status & Transitions)
         - Ordered Creation
           - Sequential Pod Startup
           - Running and Ready Verification
           - Readiness Requirements
         - [Status Sequence](Cka/StatusSequence.md)
-          - Pending State
           - ContainerCreating State
-          - Running State
           - Terminating State
           - Status Transition Patterns
           - Termination Grace Period
@@ -314,7 +307,6 @@
           - Grace Period Settings
         - [Health Assessment](Cka/HealthAssessment.md)
           - Container Readiness Status
-          - Running State Verification
       - [Ordered Operations](Cka/OrderedOperations.md)
         - Rolling Updates
           - Update Initiation Methods
@@ -419,10 +411,10 @@
 	    - kubectl logs
 	    - Cluster logging integrations (EFK/ELK, Loki)
 	  - [Monitoring](Cka/Monitoring.md)
-		  - [metrics-server](Cka/MetricsServer.md)
-		    - [Autoscaling Dependency](Cka/AutoscalingDependency.md)
-		      - HPA requires metrics-server
-		  - Prometheus & Grafana
+                  - [metrics-server](Cka/MetricsServer.md)
+                    - [Metrics Dependencies](Cka/MetricsDependencies.md)
+                      - HPA requires metrics-server
+                  - Prometheus & Grafana
 	  - [Debugging Pods](Cka/DebuggingPods.md)
 	    - kubectl exec
 	    - Ephemeral containers
@@ -446,7 +438,7 @@
 
     - Service Architecture
       - [Service Types](Cka/ServiceTypes.md)
-        - [ClusterIP Services](Cka/ClusteripServices.md)
+        - [ClusterIP Services](Cka/ClusterIPServices.md)
           - Internal cluster routing
           - Default Service type
           - Cluster DNS registration
@@ -456,7 +448,7 @@
           - Load Balancing
             - Round-robin distribution
             - Multiple Pod support
-        - [LoadBalancer Services](Cka/LoadbalancerServices.md)
+        - [LoadBalancer Services](Cka/LoadBalancerServices.md)
           - Cloud load balancer integration
           - Internet access simplification
           - Production external access
@@ -482,10 +474,7 @@
         - [Automatic Registration](Cka/AutomaticRegistration.md)
         - [DNS Record Creation](Cka/DnsRecordCreation.md)
         - API Server Integration
-      - [Service Configuration](Cka/ServiceConfiguration.md)
-        - Load Balancing Benefits
-        - Abstraction from Pod IPs
-        - Application Request Routing
+        - See *Service Architecture → Service Configuration* for manifest details.
     - [DNS Resolution](Cka/DnsResolution.md)
       - [DNS Client Configuration](Cka/DnsClientConfiguration.md)
         - [resolv.conf Structure](Cka/ResolvConfStructure.md)
@@ -511,8 +500,8 @@
       - [Node Kernel Processing](Cka/NodeKernelProcessing.md)
         - Default Gateway Routing
         - Container Gateway Processing
-    - [EndpointSlice Architecture](Cka/EndpointsliceArchitecture.md)
-      - [EndpointSlice Structure](Cka/EndpointsliceStructure.md)
+    - [EndpointSlice Architecture](Cka/EndpointSliceArchitecture.md)
+      - [EndpointSlice Structure](Cka/EndpointSliceStructure.md)
         - Address Type specification
         - [Endpoint Components](Cka/EndpointComponents.md)
           - Addresses: Pod IP addresses
@@ -520,7 +509,7 @@
           - TargetRef: Pod object reference
       - EndpointSlice Management
         - Automatic EndpointSlice creation
-        - [EndpointSlice Partitioning](Cka/EndpointslicePartitioning.md)
+        - [EndpointSlice Partitioning](Cka/EndpointSlicePartitioning.md)
           - 100-Pod threshold for partitioning
       - [Pod Health Tracking](Cka/PodHealthTracking.md)
         - Label selector matching
