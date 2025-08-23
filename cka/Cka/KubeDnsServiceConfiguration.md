@@ -1,4 +1,4 @@
-# kube-dns Service Configuration
+# ⚠️ kube-dns Service Configuration (legacy)
 
 ## Content
 
