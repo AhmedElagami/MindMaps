@@ -11,6 +11,8 @@ The three main Kubernetes objects required to deploy a StatefulSet with persiste
 
 These objects work together to provide the persistent storage capabilities and network identity management that StatefulSets require for stateful applications.
 
+For storage setup details, see [StorageClass Configuration](StorageClassConfiguration.md) and [PVC Lifecycle](PVCLifecycle.md).
+
 ### ❓ What are the two prerequisite components that must be created before deploying a StatefulSet?
 The two prerequisite components that must be created before deploying a StatefulSet are:
 1. Your storage class

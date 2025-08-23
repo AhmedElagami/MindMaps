@@ -1,6 +1,6 @@
 # PVC Lifecycle
 
-## Naming Convention
+## Naming
 
 ## Content
 
@@ -15,7 +15,7 @@ For example:
 - webroot (volumeClaimTemplate) + tkb-sts (StatefulSet) + 2 (Pod replica) = webroot-tkb-sts-2
 
 
-## Dynamic PVC Creation
+## Dynamic Creation
 ## Content
 
 ### ❓ Analyze the following PVC output table to understand how StatefulSet manages persistent volume claims for each replica.
@@ -32,7 +32,7 @@ webroot-tkb-sts-2    Bound     pvc-2ce7...e56d    10Gi        RWO      block    
 This demonstrates that StatefulSet creates a unique PVC for each Pod replica, with each PVC having 10GB capacity, ReadWriteOnce (RWO) access mode, using the 'block' StorageClass. The age differences (100s, 70s, 40s) correspond to the sequential creation pattern of the StatefulSet controller.
 
 
-## PVC Binding Process
+## Binding Process
 ## Content
 
 ### ❓ Why was the PVC immediately bound to a volume, and what specific volume binding mode enables this automatic provisioning behavior?
@@ -75,4 +75,6 @@ The PVC didn't immediately create a volume because the volume binding mode is se
 
 ### ❓ What are the benefits of topology-aware provisioning implemented by this StorageClass?
 The topology-aware provisioning implemented by this StorageClass ensures Kubernetes creates volumes in the same region and zone as the Pods by delaying PV creation until a Pod references the PVC.
+
+Used by StatefulSets via VolumeClaimTemplates ([VolumeClaimTemplates](VolumeClaimTemplates.md)).
 
