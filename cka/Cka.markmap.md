@@ -29,11 +29,11 @@
               - Validating vs Mutating Admission
               - API request interception
               - ValidatingAdmissionPolicy (CEL)
-        - [Built-in Admission Plugins](Cka/BuiltInAdmissionPlugins.md)
+        - Built-in Admission Plugins
 			- NamespaceLifecycle
 			- LimitRanger
 			- ResourceQuota
-		  - [Dynamic Admission Webhooks](Cka/AdmissionWebhooks.md)
+		  - Dynamic Admission Webhooks
 			- ValidatingWebhookConfiguration
 			- MutatingWebhookConfiguration
       - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
@@ -123,18 +123,18 @@
         - [Declarative Model](Cka/DeclarativeModel.md)
         - [Imperative Model](Cka/ImperativeModel.md)
           - Cluster Lifecycle Management
-            - [Cluster Bootstrapping](Cka/ClusterBootstrapping.md)
-            - [Cluster Upgrades](Cka/ClusterUpgrades.md)
-            - [Backup and Restore](Cka/BackupAndRestore.md)
-            - [Cluster Maintenance](Cka/ClusterMaintenance.md)
+            - Cluster Bootstrapping
+            - Cluster Upgrades
+            - Backup and Restore
+            - Cluster Maintenance
             - [Cert Management](Cka/CertManagement.md)
             - Cluster Add-ons
               - [CoreDNS](Cka/CorednsArchitecture.md)
               - [metrics-server](Cka/MetricsServer.md)
           - Security and Access Control
-            - [RBAC](Cka/RBAC.md)
-            - [Service Accounts](Cka/ServiceAccounts.md)
-            - [Secrets and ConfigMaps](Cka/SecretsAndConfigMaps.md)
+            - RBAC
+            - Service Accounts
+            - Secrets and ConfigMaps
             - [Encryption at Rest](Cka/EncryptionAtRest.md)
   - Workload Management
     - Pod Architecture
@@ -219,14 +219,14 @@
         - [Headless Service Requirement](Cka/HeadlessServiceRequirement.md)
         - [StatefulSet Definition](Cka/StatefulsetDefinition.md)
 	- Other Workload Types
-	  - [DaemonSets](Cka/DaemonSets.md)
+	  - DaemonSets
 	    - Node-local services
 	    - Log collection agents
 	    - Networking agents
-	  - [Jobs](Cka/Jobs.md)
+	  - Jobs
 	    - One-time tasks
 	    - Parallelism and completions
-          - [CronJobs](Cka/CronJobs.md)
+          - CronJobs
             - Scheduled workloads
             - Time-based execution
           - [Static Pods](Cka/StaticPods.md)
@@ -289,8 +289,8 @@
             - Best practices & pitfalls
             - Example YAML snippets
           - [Topology Spread Constraints](Cka/TopologySpreadConstraints.md)
-          - [NodeSelectors](Cka/NodeSelectors.md)
-          - [PriorityClasses and Preemption](Cka/PriorityClasses.md)
+          - NodeSelectors
+          - PriorityClasses and Preemption
   - Storage Architecture
     - [Core Components](Cka/CoreComponents.md)
       - [Storage Provider Types](Cka/StorageProviderTypes.md)
@@ -369,10 +369,10 @@
         - Snapshot Scheduling
         - Replication Settings
   - Observability and Troubleshooting
-	  - [Logging](Cka/Logging.md)
+	  - Logging
 	    - kubectl logs
 	    - Cluster logging integrations (EFK/ELK, Loki)
-          - [Monitoring](Cka/Monitoring.md)
+          - Monitoring
             - [metrics-server](Cka/MetricsServer.md)
               - HPA requires metrics-server
               - Prometheus integration
@@ -383,20 +383,20 @@
             - crictl and containerd logs
             - systemd/journald
             - Events and describe
-	  - [Node Troubleshooting](Cka/NodeTroubleshooting.md)
+	  - Node Troubleshooting
 	    - kubelet logs
 	    - systemd services
 	    - Resource pressure detection
   - Networking and Service Discovery
 	- Container Networking Interface (CNI)
-	  - [CNI Fundamentals](Cka/CniFundamentals.md)
+	  - CNI Fundamentals
 	    - Pod networking setup
 	    - IP address assignment
-	  - [Popular CNI Plugins](Cka/CniPlugins.md)
+	  - Popular CNI Plugins
 	    - Calico (policy + routing)
 	    - Flannel (simple overlay)
 	    - Cilium (eBPF-based security)
-          - [Network Policies](Cka/NetworkPolicies.md)
+          - Network Policies
             - Ingress/Egress rules
             - Namespace and label selectors
             - [Labs](Cka/NetworkPolicyLabs.md)
