@@ -1,0 +1,558 @@
+# Kubernetes Architecture and Management
+  - Core Architecture
+    - API Architecture
+      - [API Server](Cka/ApiServer.md)
+        - [Central Communication Hub](Cka/CentralCommunicationHub.md)
+        - [RESTful HTTPS Interface](Cka/RestfulHttpsInterface.md)
+        - [Resource Definition Hub](Cka/ResourceDefinitionHub.md)
+        - [CRUD Operations Processing](Cka/CrudOperationsProcessing.md)
+        - [YAML Configuration Submission](Cka/YamlConfigurationSubmission.md)
+        - [Authentication and Authorization](Cka/AuthenticationAndAuthorization.md)
+      - [API Organization](Cka/ApiOrganization.md)
+        - [API Discovery Mechanism](Cka/ApiDiscoveryMechanism.md)
+        - [Multiple Version Support](Cka/MultipleVersionSupport.md)
+        - [API Group Evolution](Cka/ApiGroupEvolution.md)
+        - [Core API Group (/api)](Cka/CoreApiGroupApi.md)
+        - [Named API Groups (/apis)](Cka/NamedApiGroupsApis.md)
+      - [API Maturity](Cka/ApiMaturity.md)
+        - Alpha API Resources
+        - Beta API Resources
+        - GA Stable Resources
+        - [Deprecation Detection](Cka/DeprecationDetection.md)
+      - API Security
+        - [mTLS Security Requirements](Cka/MtlsSecurityRequirements.md)
+        - [Certificate Authority Criticality](Cka/CertificateAuthorityCriticality.md)
+        - [Request Logging Requirement](Cka/RequestLoggingRequirement.md)
+      - Admission Controllers
+		  - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
+			- Validating vs Mutating Admission
+			- API request interception
+		  - [Built-in Admission Plugins](Cka/BuiltInAdmissionPlugins.md)
+			- NamespaceLifecycle
+			- LimitRanger
+			- ResourceQuota
+		  - [Dynamic Admission Webhooks](Cka/AdmissionWebhooks.md)
+			- ValidatingWebhookConfiguration
+			- MutatingWebhookConfiguration
+		  - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
+			- PodSecurity (Baseline / Restricted)
+			- Custom policy enforcement
+    - Controllers and Reconciliation
+      - [Controller Architecture](Cka/ControllerArchitecture.md)
+        - [State Reconciliation](Cka/StateReconciliation.md)
+        - Background Watch Loops
+        - Deployment to ReplicaSet Management
+        - ReplicaSet to Pod Ownership
+        - Configuration Persistence
+      - [Controller Types](Cka/ControllerTypes.md)
+        - [Deployment Controller](Cka/DeploymentController.md)
+        - StatefulSet Controller
+        - [ReplicaSet Controller](Cka/ReplicasetController.md)
+          - [Reconciliation Loop](Cka/ReconciliationLoop.md)
+          - [Pod Replica Management](Cka/PodReplicaManagement.md)
+          - State Synchronization
+      - [State Management](Cka/StateManagement.md)
+        - Desired State
+        - Observed State
+        - [Reconciliation Process](Cka/ReconciliationProcess.md)
+    - Node Architecture
+      - [Node Types](Cka/NodeTypes.md)
+        - Control Plane Nodes
+          - Linux OS Requirement
+          - Control Plane Services
+          - [High Availability](Cka/HighAvailability.md)
+            - Multi-Node Deployment
+            - Cross-Availability Zone Spreading
+            - Fault Tolerance Benefits
+        - [Worker Nodes](Cka/WorkerNodes.md)
+          - Linux or Windows Support
+          - Business Application Execution
+          - Mixed OS Cluster Capability
+        - [Node Infrastructure](Cka/NodeInfrastructure.md)
+          - Physical Servers
+          - [Virtual Machines](Cka/VirtualMachines.md)
+          - Cloud Instances
+      - [Control Plane Components](Cka/ControlPlaneComponents.md)
+        - [etcd Cluster Store](Cka/EtcdClusterStore.md)
+          - [RAFT Consensus Algorithm](Cka/RaftConsensusAlgorithm.md)
+            - Data Corruption Prevention
+            - Quorum Majority Requirements
+          - [High Availability](Cka/HighAvailability.md)
+            - Odd Number Replica Preference
+            - Three or Five Nodes Recommendation
+        - Scheduler
+			- [Scheduling Process](Cka/SchedulingProcess.md)
+				- Task Watching
+				- Node Identification
+				- Task Assignment
+			- [Node Assessment Criteria](Cka/NodeAssessmentCriteria.md)
+				- [Evaluation: Taints and Tolerations](Cka/TaintsAndTolerations.md)
+					- Matching rules (key/effect/operator)
+					- Effects: NoSchedule / PreferNoSchedule / NoExecute
+					- Interactions: affinity, priority, preemption
+					- Failure mode: Unschedulable & events
+				- [Affinity Rules](Cka/AffinityRules.md)
+				- [Resource Availability](Cka/ResourceAvailability.md)
+      - [Worker Node Components](Cka/WorkerNodeComponents.md)
+        - [Kubelet Functions](Cka/KubeletFunctions.md)
+          - Watches API Server
+          - Instructs Runtime Execution
+          - Reports Task Status
+        - [Kube-proxy Functions](Cka/KubeProxyFunctions.md)
+          - Cluster Networking
+          - Load Balancing
+    - Namespace Fundamentals
+      - Namespace Concepts
+        - [Linux vs Kubernetes Namespaces](Cka/LinuxVsKubernetesNamespaces.md)
+        - [API Characteristics and Stability](Cka/ApiCharacteristicsAndStability.md)
+      - [Default Namespaces](Cka/DefaultNamespaces.md)
+        - [Default namespace for user objects](Cka/DefaultNamespaceForUserObjects.md)
+        - [kube-system for control plane](Cka/KubeSystemForControlPlane.md)
+        - kube-public for public objects
+        - kube-node-lease for heartbeats
+      - [Isolation Concepts](Cka/IsolationConcepts.md)
+        - [Soft Isolation Benefits](Cka/SoftIsolationBenefits.md)
+        - [Strong Isolation Requirements](Cka/StrongIsolationRequirements.md)
+        - Isolation Limitations
+      - [Core Purposes](Cka/CorePurposes.md)
+        - [Resource Management](Cka/ResourceManagement.md)
+        - [Accounting and Multi-tenancy](Cka/AccountingAndMultiTenancy.md)
+        - [Scoped Resource Types](Cka/ScopedResourceTypes.md)
+    - Containerization
+      - [Container vs VM Comparison](Cka/ContainerVsVmComparison.md)
+        - Smaller Footprint
+        - [Faster Performance](Cka/FasterPerformance.md)
+        - [Enhanced Portability](Cka/EnhancedPortability.md)
+      - [Container Runtimes](Cka/ContainerRuntimes.md)
+        - [Containerd Runtime](Cka/ContainerdRuntime.md)
+        - CRI-O Runtime
+        - [Enhanced Runtimes](Cka/EnhancedRuntimes.md)
+          - gVisor
+          - Kata Containers
+    - [Cloud-Native Features](Cka/CloudNativeFeatures.md)
+      - Self-Healing Capability
+      - [Rollback Functionality](Cka/RollbackFunctionality.md)
+      - Default Namespace Behavior
+    - [Programming Models](Cka/ProgrammingModels.md)
+      - [Declarative Model](Cka/DeclarativeModel.md)
+      - [Imperative Model](Cka/ImperativeModel.md)
+	- Cluster Lifecycle Management
+	  - [Cluster Bootstrapping](Cka/ClusterBootstrapping.md)
+	    - kubeadm init/join
+	    - kubeconfig generation
+	  - [Cluster Upgrades](Cka/ClusterUpgrades.md)
+	    - Version skew policies
+	    - Upgrade order (control plane → worker nodes)
+	  - [Backup and Restore](Cka/BackupAndRestore.md)
+	    - etcd snapshots
+	    - kubectl resource export
+	  - [Cluster Maintenance](Cka/ClusterMaintenance.md)
+	    - Node cordon/drain/uncordon
+	    - Resource cleanup
+	  - Cluster Add-ons
+		  - [CoreDNS](Cka/CoreDNS.md) → see Networking → CoreDNS
+		  - [kube-proxy](Cka/KubeProxy.md)
+		    - iptables/ipvs mode
+		    - Service routing
+		  - [metrics-server](Cka/MetricsServer.md)  → see Observability → Monitoring
+		  - [Dashboard](Cka/Dashboard.md)
+		    - Web UI for Kubernetes
+		    - RBAC considerations
+		  - [Ingress Controllers](Cka/IngressControllers.md)  → see Networking → Ingress Architecture
+	- Cloud and Hybrid Kubernetes
+	  - [Managed Control Planes](Cka/ManagedControlPlanes.md)
+	    - GKE (Google Kubernetes Engine)
+	    - EKS (Amazon Elastic Kubernetes Service)
+	    - AKS (Azure Kubernetes Service)
+	  - [Hosted Kubernetes Benefits](Cka/HostedBenefits.md)
+	    - Automatic upgrades
+	    - Integrated monitoring/logging
+	    - Simplified networking/storage
+	  - [Trade-offs and Limitations](Cka/Tradeoffs.md)
+	    - Limited API access
+	    - Vendor-specific features
+	    - Cost considerations
+	  - [Hybrid and Multi-Cluster](Cka/HybridMultiCluster.md)
+	    - Federation basics
+	    - Service Mesh integration
+	    - Multi-cloud failover
+
+	- Security and Access Control
+	  - [RBAC](Cka/RBAC.md)
+	    - Roles and RoleBindings
+	    - ClusterRoles and ClusterRoleBindings
+	  - [Service Accounts](Cka/ServiceAccounts.md)
+	    - Default account per namespace
+	    - Pod-to-API authentication
+	  - [Secrets and ConfigMaps](Cka/SecretsAndConfigMaps.md)
+	    - Mounted as env/volumes
+	    - Sensitive data management
+  - Workload Management
+    - Pod Architecture
+      - [Pod Fundamentals](Cka/PodFundamentals.md)
+        - Atomic Scheduling Unit
+        - [Application Deployment Unit](Cka/ApplicationDeploymentUnit.md)
+        - [Workload Type Support](Cka/WorkloadTypeSupport.md)
+          - [Standard Container Integration](Cka/StandardContainerIntegration.md)
+          - [Wasm Application Compatibility](Cka/WasmApplicationCompatibility.md)
+      - [Pod Configuration](Cka/PodConfiguration.md)
+        - [Pod Manifest Structure](Cka/PodManifestStructure.md)
+          - Kind and ApiVersion
+          - Metadata Components
+            - [Pod Naming](Cka/PodNaming.md)
+            - [Labels for Selection](Cka/LabelsForSelection.md)
+        - [Pod Immutability](Cka/PodImmutability.md)
+          - No In-Place Changes
+          - Replace-Only Updates
+      - [Multi-container Patterns](Cka/MultiContainerPatterns.md)
+        - [Container Types](Cka/ContainerTypes.md)
+          - Single Container Pods
+          - [Init Containers](Cka/InitContainers.md)
+            - Service Dependency Checking
+            - Startup Sequence Enforcement
+            - Sequential Execution
+          - [Sidecar Containers](Cka/SidecarContainers.md)
+            - Application Augmentation
+            - Service Mesh Integration
+        - [Shared Resources](Cka/SharedResources.md)
+          - Shared IP Address
+          - Shared Network Resources
+          - Shared Volumes
+      - [Lifecycle Management](Cka/LifecycleManagement.md)
+        - [Lifecycle Phases](Cka/LifecyclePhases.md)
+          - Pending Phase
+          - Running Phase
+          - Succeeded State
+        - [Restart Policies](Cka/RestartPolicies.md)
+          - Always Restart Containers
+          - Never Restart Containers
+          - OnFailure Restart Only
+      - [Pod Security](Cka/PodSecurity.md)
+        - [Security Standards](Cka/SecurityStandards.md)
+          - Privileged Policy
+          - Baseline Policy
+          - [Restricted Policy](Cka/RestrictedPolicy.md)
+        - [Security Admission](Cka/SecurityAdmission.md)
+          - Enforcement Modes
+            - Warn Mode
+            - Audit Mode
+            - Enforce Mode
+    - [Deployment Architecture](Cka/DeploymentArchitecture.md)
+      - [Deployment-ReplicaSet Relationship](Cka/DeploymentReplicasetRelationship.md)
+        - Hierarchical Controller Relationship
+        - Automatic ReplicaSet Creation
+        - [Status Rollup Mechanism](Cka/StatusRollupMechanism.md)
+        - [ReplicaSet Naming Convention](Cka/ReplicasetNamingConvention.md)
+        - [Multiple ReplicaSet Coordination](Cka/MultipleReplicasetCoordination.md)
+        - [State Transition Management](Cka/StateTransitionManagement.md)
+        - Indirect Pod Management
+      - Pod Immutability Principle
+      - [Multi-Service Deployment Architecture](Cka/MultiServiceDeploymentArchitecture.md)
+    - [StatefulSet Architecture](Cka/StatefulsetArchitecture.md)
+      - StatefulSet vs Deployment
+        - Architectural Differences
+        - ReplicaSet Controller Comparison
+        - Self-Healing and Scaling Capabilities
+      - [Core Capabilities](Cka/CoreCapabilities.md)
+        - [Self-healing Mechanism](Cka/SelfHealingMechanism.md)
+        - [Rollout Management](Cka/RolloutManagement.md)
+        - Manual Rollback Requirement
+        - [Ordered Deployment Management](Cka/OrderedDeploymentManagement.md)
+        - Stable Network Identities
+        - [Replica and Volume Management](Cka/ReplicaAndVolumeManagement.md)
+      - [Stateful Application Benefits](Cka/StatefulApplicationBenefits.md)
+        - Race Condition Prevention
+        - Proper Initialization Sequences
+        - Leader Election Support
+        - Predictable Connection Patterns
+        - Sticky Identity Component
+      - [Required Objects](Cka/RequiredObjects.md)
+        - StorageClass Requirement
+        - [Headless Service Requirement](Cka/HeadlessServiceRequirement.md)
+        - [StatefulSet Definition](Cka/StatefulsetDefinition.md)
+	- Other Workload Types
+	  - [DaemonSets](Cka/DaemonSets.md)
+	    - Node-local services
+	    - Log collection agents
+	    - Networking agents
+	  - [Jobs](Cka/Jobs.md)
+	    - One-time tasks
+	    - Parallelism and completions
+	  - [CronJobs](Cka/CronJobs.md)
+	    - Scheduled workloads
+	    - Time-based execution
+	  - [Autoscaling](Cka/Autoscaling.md)
+		  - HorizontalPodAutoscaler (HPA)
+			- Depends on metrics-server
+			- Scales replicas based on CPU/memory/metrics
+		  - VerticalPodAutoscaler (VPA)
+			- Adjusts Pod resource requests/limits
+			- Not native in all clusters
+		  - Cluster Autoscaler
+			- Node scaling based on scheduling needs
+			- Cloud-provider integration
+		  - [Metrics Dependencies](Cka/MetricsDependencies.md)
+			- metrics-server installation
+			- Prometheus integration
+
+
+    - Pod Management
+      - [Naming and Identity](Cka/NamingAndIdentity.md)
+        - [Predictable Naming Convention](Cka/PredictableNamingConvention.md)
+        - Replica Naming Convention
+        - Core Operations Dependency
+        - Unique Pod IP Addresses
+        - Pod Age Indicators
+        - DNS Hostname
+        - Lifecycle Persistence
+      - [Lifecycle Management](Cka/LifecycleManagement.md)
+        - Ordered Creation
+          - Sequential Pod Startup
+          - Running and Ready Verification
+          - Readiness Requirements
+        - [Status Sequence](Cka/StatusSequence.md)
+          - Pending State
+          - ContainerCreating State
+          - Running State
+          - Terminating State
+          - Status Transition Patterns
+          - Termination Grace Period
+        - Pod Configuration
+          - Container Specification
+          - Network Port Configuration
+          - Volume Mounts
+          - Grace Period Settings
+        - [Health Assessment](Cka/HealthAssessment.md)
+          - Container Readiness Status
+          - Running State Verification
+      - [Ordered Operations](Cka/OrderedOperations.md)
+        - Rolling Updates
+          - Update Initiation Methods
+          - Pod Replacement Order
+          - Controller Behavior
+        - Deletion Process
+          - Non-Orderly Pod Termination
+          - Scale to Zero Recommendation
+        - [Scaling Modes](Cka/ScalingModes.md)
+          - OrderedReady Default
+          - Parallel Scaling
+    - [Scheduling Strategy](Cka/SchedulingStrategy.md)
+	  - Node Distribution Pattern
+	  - [Anti-Affinity Distribution](Cka/AntiAffinityDistribution.md)
+	  - High Availability Strategy
+	  - [Using Taints and Tolerations](Cka/TaintsAndTolerations.md)
+		  - When to taint nodes vs add tolerations
+		  - Common patterns (e.g., GPU, spot/preemptible, system workloads)
+		  - Best practices & pitfalls
+		  - Example YAML snippets
+	  - [NodeSelectors](Cka/NodeSelectors.md)
+	  - [PriorityClasses and Preemption](Cka/PriorityClasses.md)
+  - Storage Architecture
+    - [Core Components](Cka/CoreComponents.md)
+      - [Storage Provider Types](Cka/StorageProviderTypes.md)
+        - Block Storage Systems
+        - File Storage Systems
+        - Object Storage Systems
+      - [Persistent Volume Subsystem](Cka/PersistentVolumeSubsystem.md)
+        - [PersistentVolumes](Cka/Persistentvolumes.md)
+        - PersistentVolumeClaims
+        - [StorageClasses](Cka/Storageclasses.md)
+      - [Plugin Architecture](Cka/PluginArchitecture.md)
+        - CSI Plugin Advantages
+        - In-tree Plugin Limitations
+        - Plugin Integration Requirements
+    - Container Storage Interface (CSI)
+      - [CSI Fundamentals](Cka/CsiFundamentals.md)
+        - Standardized Storage Interface
+        - Cross-Platform Compatibility
+        - Cloud Provider Integration
+      - [Plugin Deployment](Cka/PluginDeployment.md)
+        - Helm Chart Installation
+        - YAML Installer Deployment
+        - Plugin Runtime Environment
+      - [Provider Compatibility](Cka/ProviderCompatibility.md)
+        - [Cloud Provider Provisioners](Cka/CloudProviderProvisioners.md)
+          - GKE Provisioners
+          - Linode Block Storage Provisioning
+        - [Locality Constraints](Cka/LocalityConstraints.md)
+        - CSI Provisioner Prevalence
+    - Dynamic Provisioning
+      - [Provisioning Process](Cka/ProvisioningProcess.md)
+        - Install and Configure CSI Plugin
+        - Create StorageClasses
+        - Deploy Pods with PVCs
+        - [Controller PVC Monitoring](Cka/ControllerPvcMonitoring.md)
+        - [External Volume Creation](Cka/ExternalVolumeCreation.md)
+        - Pod Mount and Usage
+      - PVC to PV Automation
+      - Automatic Volume Creation
+      - [Prerequisites](Cka/Prerequisites.md)
+        - External Storage System Requirement
+        - [Hosted Kubernetes Service Simplification](Cka/HostedKubernetesServiceSimplification.md)
+    - [Volume Management](Cka/VolumeManagement.md)
+      - [Persistent Volume Claims](Cka/PersistentVolumeClaims.md)
+        - [Volume Claim Templates](Cka/VolumeClaimTemplates.md)
+        - [PVC Naming Convention](Cka/PvcNamingConvention.md)
+        - PVC Properties and Timing
+        - [Dynamic PVC Creation](Cka/DynamicPvcCreation.md)
+          - One-to-One Pod-PVC Relationship
+          - Unique Naming Mechanism
+          - [PVC Binding Process](Cka/PvcBindingProcess.md)
+        - [Storage Configuration](Cka/StorageConfiguration.md)
+          - [Access Modes](Cka/AccessModes.md)
+          - Storage Class Specification
+          - Capacity Requests
+      - Volume Configuration
+        - Dynamic Volume Provisioning
+        - [Storage Class Configuration](Cka/StorageClassConfiguration.md)
+        - Volume Mounts
+      - [Volume-Pod Relationship](Cka/VolumePodRelationship.md)
+        - Named Volume Linking
+        - [Volume Reattachment](Cka/VolumeReattachment.md)
+        - [Volume Attachment Process](Cka/VolumeAttachmentProcess.md)
+        - Unique Volume Assignment
+      - [Volume Lifecycle](Cka/VolumeLifecycle.md)
+        - Persistent Volume Claim Decoupling
+        - [Data Continuity Assurance](Cka/DataContinuityAssurance.md)
+        - [Accidental Deletion Protection](Cka/AccidentalDeletionProtection.md)
+        - PVC Claim Maintenance
+        - Original Storage Reattachment
+        - Correct PVC Association
+      - Data Integrity
+        - Data Preservation
+        - Scale Down Protection
+        - Concurrent Write Prevention
+        - Volume Mapping Enforcement
+        - Snapshot Scheduling
+        - Replication Settings
+  - Observability and Troubleshooting
+	  - [Logging](Cka/Logging.md)
+	    - kubectl logs
+	    - Cluster logging integrations (EFK/ELK, Loki)
+	  - [Monitoring](Cka/Monitoring.md)
+		  - [metrics-server](Cka/MetricsServer.md)
+		    - [Autoscaling Dependency](Cka/AutoscalingDependency.md)
+		      - HPA requires metrics-server
+		  - Prometheus & Grafana
+	  - [Debugging Pods](Cka/DebuggingPods.md)
+	    - kubectl exec
+	    - Ephemeral containers
+	    - Events and describe
+	  - [Node Troubleshooting](Cka/NodeTroubleshooting.md)
+	    - kubelet logs
+	    - systemd services
+	    - Resource pressure detection
+  - Networking and Service Discovery
+	- Container Networking Interface (CNI)
+	  - [CNI Fundamentals](Cka/CniFundamentals.md)
+	    - Pod networking setup
+	    - IP address assignment
+	  - [Popular CNI Plugins](Cka/CniPlugins.md)
+	    - Calico (policy + routing)
+	    - Flannel (simple overlay)
+	    - Cilium (eBPF-based security)
+	  - [Network Policies](Cka/NetworkPolicies.md)
+	    - Ingress/Egress rules
+	    - Namespace and label selectors
+
+    - Service Architecture
+      - [Service Types](Cka/ServiceTypes.md)
+        - [ClusterIP Services](Cka/ClusteripServices.md)
+          - Internal cluster routing
+          - Default Service type
+          - Cluster DNS registration
+        - [NodePort Services](Cka/NodeportServices.md)
+          - External access via node ports
+          - Dedicated node port
+          - Load Balancing
+            - Round-robin distribution
+            - Multiple Pod support
+        - [LoadBalancer Services](Cka/LoadbalancerServices.md)
+          - Cloud load balancer integration
+          - Internet access simplification
+          - Production external access
+      - [Core Functions](Cka/CoreFunctions.md)
+        - [Frontend Characteristics](Cka/FrontendCharacteristics.md)
+          - [Stable DNS name](Cka/StableDnsName.md)
+          - [Fixed Cluster IP address](Cka/FixedClusterIpAddress.md)
+          - Consistent port number
+        - [Backend Characteristics](Cka/BackendCharacteristics.md)
+          - [Dynamic Pod Load Balancing](Cka/DynamicPodLoadBalancing.md)
+          - [Label Selector Targeting](Cka/LabelSelectorTargeting.md)
+          - Endpoint Health Monitoring
+      - [Service Configuration](Cka/ServiceConfiguration.md)
+        - [Manifest Structure](Cka/ManifestStructure.md)
+          - Service type definition
+          - Pod selector targeting
+          - Port mapping configuration
+        - [Session Affinity](Cka/SessionAffinity.md)
+          - Default none behavior
+          - ClientIP stickiness option
+    - Service Discovery
+      - [Registration Process](Cka/RegistrationProcess.md)
+        - [Automatic Registration](Cka/AutomaticRegistration.md)
+        - [DNS Record Creation](Cka/DnsRecordCreation.md)
+        - API Server Integration
+      - [Service Configuration](Cka/ServiceConfiguration.md)
+        - Load Balancing Benefits
+        - Abstraction from Pod IPs
+        - Application Request Routing
+    - [DNS Resolution](Cka/DnsResolution.md)
+      - [DNS Client Configuration](Cka/DnsClientConfiguration.md)
+        - [resolv.conf Structure](Cka/ResolvConfStructure.md)
+        - Search Domains Hierarchy
+        - Nameserver Configuration
+      - [Resolution Patterns](Cka/ResolutionPatterns.md)
+        - [Namespace-Specific Resolution](Cka/NamespaceSpecificResolution.md)
+        - [FQDN Cross-Namespace Access](Cka/FqdnCrossNamespaceAccess.md)
+        - [Short Name Local Resolution](Cka/ShortNameLocalResolution.md)
+      - [CoreDNS Architecture](Cka/CorednsArchitecture.md)
+        - CoreDNS Deployment
+        - [kube-dns Service Configuration](Cka/KubeDnsServiceConfiguration.md)
+        - EndpointSlice Management
+    - [Network Routing](Cka/NetworkRouting.md)
+      - [ClusterIP Routing](Cka/ClusteripRouting.md)
+        - Service Network Accessibility
+        - Traffic Redirection Processing
+        - Pod Redirection Mechanism
+      - [kube-proxy Operations](Cka/KubeProxyOperations.md)
+        - API Server Monitoring
+        - Kernel Rule Creation
+        - Traffic Interception
+      - [Node Kernel Processing](Cka/NodeKernelProcessing.md)
+        - Default Gateway Routing
+        - Container Gateway Processing
+    - [EndpointSlice Architecture](Cka/EndpointsliceArchitecture.md)
+      - [EndpointSlice Structure](Cka/EndpointsliceStructure.md)
+        - Address Type specification
+        - [Endpoint Components](Cka/EndpointComponents.md)
+          - Addresses: Pod IP addresses
+          - Conditions: Endpoint readiness status
+          - TargetRef: Pod object reference
+      - EndpointSlice Management
+        - Automatic EndpointSlice creation
+        - [EndpointSlice Partitioning](Cka/EndpointslicePartitioning.md)
+          - 100-Pod threshold for partitioning
+      - [Pod Health Tracking](Cka/PodHealthTracking.md)
+        - Label selector matching
+        - Dynamic Pod addition and removal
+        - Healthy Pod detection
+    - Ingress Architecture
+      - [Purpose and Benefits](Cka/PurposeAndBenefits.md)
+        - Multiple Applications access
+        - Single Load Balancer exposure
+        - [Service Limitations Addressed](Cka/ServiceLimitationsAddressed.md)
+          - NodePort high port numbers
+          - LoadBalancer cost limitations
+      - [Ingress Components](Cka/IngressComponents.md)
+        - [Ingress Controllers](Cka/IngressControllers.md)
+          - External controller requirement
+          - NGINX controller installation
+        - [Ingress Classes](Cka/IngressClasses.md)
+          - Multiple controller support
+          - Default class behavior
+      - [Routing Configuration](Cka/RoutingConfiguration.md)
+        - [Host-based Routing](Cka/HostBasedRouting.md)
+          - Domain-based traffic routing
+          - HTTP Header hostname matching
+        - [Path-based routing](Cka/PathBasedRouting.md)
