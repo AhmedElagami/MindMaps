@@ -2,11 +2,12 @@
   - Core Architecture
     - API Architecture
       - [API Server](Cka/ApiServer.md)
-        - [Central Communication Hub](Cka/CentralCommunicationHub.md)
-        - [RESTful HTTPS Interface](Cka/RestfulHttpsInterface.md)
-        - [Resource Definition Hub](Cka/ResourceDefinitionHub.md)
-        - [CRUD Operations Processing](Cka/CrudOperationsProcessing.md)
-        - [YAML Configuration Submission](Cka/YamlConfigurationSubmission.md)
+        - [Functions](Cka/ApiServerFunctions.md)
+          - Central Communication Hub
+          - RESTful HTTPS Interface
+          - Resource Definition Hub
+          - CRUD Operations Processing
+          - YAML Configuration Submission
         - [Authentication and Authorization](Cka/AuthenticationAndAuthorization.md)
       - [API Organization](Cka/ApiOrganization.md)
         - [API Discovery Mechanism](Cka/ApiDiscoveryMechanism.md)
@@ -38,22 +39,12 @@
 			- PodSecurity (Baseline / Restricted)
 			- Custom policy enforcement
     - Controllers and Reconciliation
-      - [Controller Architecture](Cka/ControllerArchitecture.md)
-        - [State Reconciliation](Cka/StateReconciliation.md)
-        - Background Watch Loops
-        - Deployment to ReplicaSet Management
-        - ReplicaSet to Pod Ownership
-        - Configuration Persistence
+      - [Architecture & State Management](Cka/ControllerArchitectureAndStateManagement.md)
       - [Controller Types](Cka/ControllerTypes.md)
         - [Deployment Controller](Cka/DeploymentController.md)
         - StatefulSet Controller
-        - [ReplicaSet Controller](Cka/ReplicasetController.md)
-          - [Reconciliation Loop](Cka/ReconciliationLoop.md)
-          - [Pod Replica Management](Cka/PodReplicaManagement.md)
-          - State Synchronization
-      - [State Management](Cka/StateManagement.md)
-        - Desired State
-        - Observed State
+        - [ReplicaSet Controller](Cka/ReplicaSetController.md)
+      - Processes
         - [Reconciliation Process](Cka/ReconciliationProcess.md)
     - Node Architecture
       - [Node Types](Cka/NodeTypes.md)
@@ -151,7 +142,7 @@
 	    - Resource cleanup
 	  - Cluster Add-ons
 		  - [CoreDNS](Cka/CoreDNS.md) → see Networking → CoreDNS
-		  - [kube-proxy](Cka/KubeProxy.md)
+		  - kube-proxy (see Worker Node Components)
 		    - iptables/ipvs mode
 		    - Service routing
 		  - [metrics-server](Cka/MetricsServer.md)  → see Observability → Monitoring
@@ -199,8 +190,7 @@
         - [Pod Manifest Structure](Cka/PodManifestStructure.md)
           - Kind and ApiVersion
           - Metadata Components
-            - [Pod Naming](Cka/PodNaming.md)
-            - [Labels for Selection](Cka/LabelsForSelection.md)
+            - [Pod Metadata](Cka/PodMetadata.md)
         - [Pod Immutability](Cka/PodImmutability.md)
           - No In-Place Changes
           - Replace-Only Updates
@@ -242,7 +232,7 @@
         - Hierarchical Controller Relationship
         - Automatic ReplicaSet Creation
         - [Status Rollup Mechanism](Cka/StatusRollupMechanism.md)
-        - [ReplicaSet Naming Convention](Cka/ReplicasetNamingConvention.md)
+        - [ReplicaSet Naming Convention](Cka/ReplicaSetNamingConvention.md)
         - [Multiple ReplicaSet Coordination](Cka/MultipleReplicasetCoordination.md)
         - [State Transition Management](Cka/StateTransitionManagement.md)
         - Indirect Pod Management
@@ -305,7 +295,7 @@
         - Pod Age Indicators
         - DNS Hostname
         - Lifecycle Persistence
-      - [Lifecycle Management](Cka/LifecycleManagement.md)
+      - Pod Execution Management
         - Ordered Creation
           - Sequential Pod Startup
           - Running and Ready Verification
@@ -354,9 +344,9 @@
         - File Storage Systems
         - Object Storage Systems
       - [Persistent Volume Subsystem](Cka/PersistentVolumeSubsystem.md)
-        - [PersistentVolumes](Cka/Persistentvolumes.md)
+        - [PersistentVolumes](Cka/PersistentVolumes.md)
         - PersistentVolumeClaims
-        - [StorageClasses](Cka/Storageclasses.md)
+        - [StorageClasses](Cka/StorageClasses.md)
       - [Plugin Architecture](Cka/PluginArchitecture.md)
         - CSI Plugin Advantages
         - In-tree Plugin Limitations
@@ -392,12 +382,11 @@
     - [Volume Management](Cka/VolumeManagement.md)
       - [Persistent Volume Claims](Cka/PersistentVolumeClaims.md)
         - [Volume Claim Templates](Cka/VolumeClaimTemplates.md)
-        - [PVC Naming Convention](Cka/PvcNamingConvention.md)
+        - [PVC Lifecycle](Cka/PVCLifecycle.md)
+          - Naming Convention
+          - Dynamic PVC Creation
+          - PVC Binding Process
         - PVC Properties and Timing
-        - [Dynamic PVC Creation](Cka/DynamicPvcCreation.md)
-          - One-to-One Pod-PVC Relationship
-          - Unique Naming Mechanism
-          - [PVC Binding Process](Cka/PvcBindingProcess.md)
         - [Storage Configuration](Cka/StorageConfiguration.md)
           - [Access Modes](Cka/AccessModes.md)
           - Storage Class Specification
@@ -552,7 +541,6 @@
           - Multiple controller support
           - Default class behavior
       - [Routing Configuration](Cka/RoutingConfiguration.md)
-        - [Host-based Routing](Cka/HostBasedRouting.md)
-          - Domain-based traffic routing
-          - HTTP Header hostname matching
-        - [Path-based routing](Cka/PathBasedRouting.md)
+        - [Ingress Routing](Cka/IngressRouting.md)
+          - Host-based Routing
+          - Path-based Routing

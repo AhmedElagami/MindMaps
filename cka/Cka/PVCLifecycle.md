@@ -1,5 +1,38 @@
-# PVC Binding Process
+# PVC Lifecycle
 
+## Naming Convention
+
+## Content
+
+### ❓ What naming convention pattern is used for PVCs created by a StatefulSet volume claim template, and what components are included in each name?
+The PVC naming convention includes three components in each name: the volume claim template name, the StatefulSet name, and the associated Pod replica number. The pattern is:
+
+volumeClaimTemplate name + StatefulSet name + Pod replica number
+
+For example:
+- webroot (volumeClaimTemplate) + tkb-sts (StatefulSet) + 0 (Pod replica) = webroot-tkb-sts-0
+- webroot (volumeClaimTemplate) + tkb-sts (StatefulSet) + 1 (Pod replica) = webroot-tkb-sts-1  
+- webroot (volumeClaimTemplate) + tkb-sts (StatefulSet) + 2 (Pod replica) = webroot-tkb-sts-2
+
+
+## Dynamic PVC Creation
+## Content
+
+### ❓ Analyze the following PVC output table to understand how StatefulSet manages persistent volume claims for each replica.
+The PVC output shows three bound volumes, each created at different times corresponding to when each Pod replica was created:
+
+```bash
+$ kubectl get pvc
+NAME                 STATUS    VOLUME             CAPACITY    MODES    STORAGECLASS    AGE
+webroot-tkb-sts-0    Bound     pvc-1146...f274    10Gi        RWO      block           100s
+webroot-tkb-sts-1    Bound     pvc-3026...6bcb    10Gi        RWO      block           70s
+webroot-tkb-sts-2    Bound     pvc-2ce7...e56d    10Gi        RWO      block           40s
+```
+
+This demonstrates that StatefulSet creates a unique PVC for each Pod replica, with each PVC having 10GB capacity, ReadWriteOnce (RWO) access mode, using the 'block' StorageClass. The age differences (100s, 70s, 40s) correspond to the sequential creation pattern of the StatefulSet controller.
+
+
+## PVC Binding Process
 ## Content
 
 ### ❓ Why was the PVC immediately bound to a volume, and what specific volume binding mode enables this automatic provisioning behavior?
