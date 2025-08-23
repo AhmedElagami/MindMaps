@@ -25,10 +25,11 @@
         - [Certificate Authority Criticality](Cka/CertificateAuthorityCriticality.md)
         - [Request Logging Requirement](Cka/RequestLoggingRequirement.md)
       - Admission Controllers
-		  - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
-			- Validating vs Mutating Admission
-			- API request interception
-		  - [Built-in Admission Plugins](Cka/BuiltInAdmissionPlugins.md)
+                  - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
+                        - Validating vs Mutating Admission
+                        - API request interception
+                        - ValidatingAdmissionPolicy (CEL)
+                  - [Built-in Admission Plugins](Cka/BuiltInAdmissionPlugins.md)
 			- NamespaceLifecycle
 			- LimitRanger
 			- ResourceQuota
@@ -60,9 +61,8 @@
             - Cross-Availability Zone Spreading
             - Fault Tolerance Benefits
         - [Worker Nodes](Cka/WorkerNodes.md)
-          - Linux or Windows Support
-          - Business Application Execution
-          - Mixed OS Cluster Capability
+          - Run business applications
+          - Primarily Linux; Windows support is niche
         - [Node Infrastructure](Cka/NodeInfrastructure.md)
           - Physical Servers
           - [Virtual Machines](Cka/VirtualMachines.md)
@@ -75,25 +75,22 @@
           - [High Availability](Cka/HighAvailability.md)
             - Odd Number Replica Preference
             - Three or Five Nodes Recommendation
+          - [etcdctl Operations](Cka/EtcdctlOperations.md)
         - Scheduler
 			- [Scheduling Process](Cka/SchedulingProcess.md)
 				- Task Watching
 				- Node Identification
 				- Task Assignment
-			- [Node Assessment Criteria](Cka/NodeAssessmentCriteria.md)
-				- [Evaluation: Taints and Tolerations](Cka/TaintsAndTolerations.md)
-					- Matching rules (key/effect/operator)
-					- Effects: NoSchedule / PreferNoSchedule / NoExecute
-					- Interactions: affinity, priority, preemption
-					- Failure mode: Unschedulable & events
-				- [Affinity Rules](Cka/AffinityRules.md)
-				- [Resource Availability](Cka/ResourceAvailability.md)
+                        - [Node Assessment Criteria](Cka/NodeAssessmentCriteria.md)
+                                - See [Taints and Tolerations](Cka/TaintsAndTolerations.md)
+                                - [Affinity Rules](Cka/AffinityRules.md)
+                                - [Resource Availability](Cka/ResourceAvailability.md)
       - [Worker Node Components](Cka/WorkerNodeComponents.md)
         - [Kubelet Functions](Cka/KubeletFunctions.md)
           - Watches API Server
           - Instructs Runtime Execution
           - Reports Task Status
-        - [Kube-proxy Functions](Cka/KubeProxyFunctions.md)
+        - [Kube-proxy](Cka/KubeProxy.md)
           - Cluster Networking
           - Load Balancing
     - Namespace Fundamentals
@@ -124,55 +121,25 @@
         - [Enhanced Runtimes](Cka/EnhancedRuntimes.md)
           - gVisor
           - Kata Containers
-    - [Programming Models](Cka/ProgrammingModels.md)
-      - [Declarative Model](Cka/DeclarativeModel.md)
-      - [Imperative Model](Cka/ImperativeModel.md)
-	- Cluster Lifecycle Management
-	  - [Cluster Bootstrapping](Cka/ClusterBootstrapping.md)
-	    - kubeadm init/join
-	    - kubeconfig generation
-	  - [Cluster Upgrades](Cka/ClusterUpgrades.md)
-	    - Version skew policies
-	    - Upgrade order (control plane → worker nodes)
-	  - [Backup and Restore](Cka/BackupAndRestore.md)
-	    - etcd snapshots
-	    - kubectl resource export
-	  - [Cluster Maintenance](Cka/ClusterMaintenance.md)
-	    - Node cordon/drain/uncordon
-	    - Resource cleanup
-          - Cluster Add-ons
-            - [CoreDNS](Cka/CorednsArchitecture.md)
-            - [Ingress Controllers](Cka/IngressControllers.md)
-            - [metrics-server](Cka/MetricsServer.md)
-            - kube-proxy ([KubeProxy Operations](Cka/KubeProxyOperations.md), [Worker Node Components](Cka/WorkerNodeComponents.md))
-	- Cloud and Hybrid Kubernetes
-	  - [Managed Control Planes](Cka/ManagedControlPlanes.md)
-	    - GKE (Google Kubernetes Engine)
-	    - EKS (Amazon Elastic Kubernetes Service)
-	    - AKS (Azure Kubernetes Service)
-	  - [Hosted Kubernetes Benefits](Cka/HostedBenefits.md)
-	    - Automatic upgrades
-	    - Integrated monitoring/logging
-	    - Simplified networking/storage
-	  - [Trade-offs and Limitations](Cka/Tradeoffs.md)
-	    - Limited API access
-	    - Vendor-specific features
-	    - Cost considerations
-	  - [Hybrid and Multi-Cluster](Cka/HybridMultiCluster.md)
-	    - Federation basics
-	    - Service Mesh integration
-	    - Multi-cloud failover
-
-	- Security and Access Control
-	  - [RBAC](Cka/RBAC.md)
-	    - Roles and RoleBindings
-	    - ClusterRoles and ClusterRoleBindings
-	  - [Service Accounts](Cka/ServiceAccounts.md)
-	    - Default account per namespace
-	    - Pod-to-API authentication
-	  - [Secrets and ConfigMaps](Cka/SecretsAndConfigMaps.md)
-	    - Mounted as env/volumes
-	    - Sensitive data management
+    - [kubectl Fundamentals](Cka/KubectlFundamentals.md)
+      - Programming Models
+        - [Declarative Model](Cka/DeclarativeModel.md)
+        - [Imperative Model](Cka/ImperativeModel.md)
+          - Cluster Lifecycle Management
+            - [Cluster Bootstrapping](Cka/ClusterBootstrapping.md)
+            - [Cluster Upgrades](Cka/ClusterUpgrades.md)
+            - [Backup and Restore](Cka/BackupAndRestore.md)
+            - [Cluster Maintenance](Cka/ClusterMaintenance.md)
+            - [Cert Management](Cka/CertManagement.md)
+            - Cluster Add-ons
+              - [CoreDNS](Cka/CorednsArchitecture.md)
+              - [metrics-server](Cka/MetricsServer.md)
+              - kube-proxy ([Kube-proxy](Cka/KubeProxy.md), [Worker Node Components](Cka/WorkerNodeComponents.md))
+          - Security and Access Control
+            - [RBAC](Cka/RBAC.md)
+            - [Service Accounts](Cka/ServiceAccounts.md)
+            - [Secrets and ConfigMaps](Cka/SecretsAndConfigMaps.md)
+            - [Encryption at Rest](Cka/EncryptionAtRest.md)
   - Workload Management
     - Pod Architecture
       - [Pod Fundamentals](Cka/PodFundamentals.md)
@@ -180,7 +147,7 @@
         - [Application Deployment Unit](Cka/ApplicationDeploymentUnit.md)
         - [Workload Type Support](Cka/WorkloadTypeSupport.md)
           - [Standard Container Integration](Cka/StandardContainerIntegration.md)
-          - [Wasm Application Compatibility](Cka/WasmApplicationCompatibility.md)
+          - ⚠️ [Wasm Application Compatibility](Cka/WasmApplicationCompatibility.md)
       - [Pod Configuration](Cka/PodConfiguration.md)
         - [Pod Manifest Structure](Cka/PodManifestStructure.md)
           - Kind and ApiVersion
@@ -217,6 +184,7 @@
           - Privileged Policy
           - Baseline Policy
           - [Restricted Policy](Cka/RestrictedPolicy.md)
+      - [Probes](Cka/Probes.md)
     - [Cloud-Native Features](Cka/CloudNativeFeatures.md)
       - Self-Healing Capability
       - [Rollback Functionality](Cka/RollbackFunctionality.md)
@@ -262,22 +230,20 @@
 	  - [Jobs](Cka/Jobs.md)
 	    - One-time tasks
 	    - Parallelism and completions
-	  - [CronJobs](Cka/CronJobs.md)
-	    - Scheduled workloads
-	    - Time-based execution
-	  - [Autoscaling](Cka/Autoscaling.md)
-		  - HorizontalPodAutoscaler (HPA)
-			- Depends on metrics-server
-			- Scales replicas based on CPU/memory/metrics
-		  - VerticalPodAutoscaler (VPA)
-			- Adjusts Pod resource requests/limits
-			- Not native in all clusters
-		  - Cluster Autoscaler
-			- Node scaling based on scheduling needs
-			- Cloud-provider integration
-		  - [Metrics Dependencies](Cka/MetricsDependencies.md)
-			- metrics-server installation
-			- Prometheus integration
+          - [CronJobs](Cka/CronJobs.md)
+            - Scheduled workloads
+            - Time-based execution
+          - [Static Pods](Cka/StaticPods.md)
+          - [Autoscaling](Cka/Autoscaling.md)
+                  - HorizontalPodAutoscaler (HPA)
+                        - Depends on metrics-server
+                        - Scales replicas based on CPU/memory/metrics
+                  - VerticalPodAutoscaler (VPA)
+                        - Adjusts Pod resource requests/limits
+                        - Not native in all clusters
+                  - Cluster Autoscaler
+                        - Node scaling based on scheduling needs
+                        - Cloud-provider integration
 
 
     - Pod Management
@@ -306,6 +272,8 @@
           - Grace Period Settings
         - [Health Assessment](Cka/HealthAssessment.md)
           - Container Readiness Status
+      - [QoS and Evictions](Cka/QoSAndEvictions.md)
+      - [Pod Disruption Budgets](Cka/PodDisruptionBudgets.md)
       - [Ordered Operations](Cka/OrderedOperations.md)
         - Rolling Updates
           - Update Initiation Methods
@@ -321,13 +289,14 @@
 	  - Node Distribution Pattern
 	  - [Anti-Affinity Distribution](Cka/AntiAffinityDistribution.md)
 	  - High Availability Strategy
-	  - [Using Taints and Tolerations](Cka/TaintsAndTolerations.md)
-		  - When to taint nodes vs add tolerations
-		  - Common patterns (e.g., GPU, spot/preemptible, system workloads)
-		  - Best practices & pitfalls
-		  - Example YAML snippets
-	  - [NodeSelectors](Cka/NodeSelectors.md)
-	  - [PriorityClasses and Preemption](Cka/PriorityClasses.md)
+          - [Using Taints and Tolerations](Cka/TaintsAndTolerations.md)
+                  - When to taint nodes vs add tolerations
+                  - Common patterns (e.g., GPU, spot/preemptible, system workloads)
+                  - Best practices & pitfalls
+                  - Example YAML snippets
+          - [Topology Spread Constraints](Cka/TopologySpreadConstraints.md)
+          - [NodeSelectors](Cka/NodeSelectors.md)
+          - [PriorityClasses and Preemption](Cka/PriorityClasses.md)
   - Storage Architecture
     - [Core Components](Cka/CoreComponents.md)
       - [Storage Provider Types](Cka/StorageProviderTypes.md)
@@ -409,15 +378,17 @@
 	  - [Logging](Cka/Logging.md)
 	    - kubectl logs
 	    - Cluster logging integrations (EFK/ELK, Loki)
-	  - [Monitoring](Cka/Monitoring.md)
+          - [Monitoring](Cka/Monitoring.md)
                   - [metrics-server](Cka/MetricsServer.md)
-                    - [Metrics Dependencies](Cka/MetricsDependencies.md)
-                      - HPA requires metrics-server
+                    - HPA requires metrics-server
+                    - Prometheus integration
                   - Prometheus & Grafana
-	  - [Debugging Pods](Cka/DebuggingPods.md)
-	    - kubectl exec
-	    - Ephemeral containers
-	    - Events and describe
+          - [Debugging Pods](Cka/DebuggingPods.md)
+            - kubectl exec
+            - kubectl debug (ephemeral containers)
+            - crictl and containerd logs
+            - systemd/journald
+            - Events and describe
 	  - [Node Troubleshooting](Cka/NodeTroubleshooting.md)
 	    - kubelet logs
 	    - systemd services
@@ -431,9 +402,10 @@
 	    - Calico (policy + routing)
 	    - Flannel (simple overlay)
 	    - Cilium (eBPF-based security)
-	  - [Network Policies](Cka/NetworkPolicies.md)
-	    - Ingress/Egress rules
-	    - Namespace and label selectors
+          - [Network Policies](Cka/NetworkPolicies.md)
+            - Ingress/Egress rules
+            - Namespace and label selectors
+            - [Labs](Cka/NetworkPolicyLabs.md)
 
     - Service Architecture
       - [Service Types](Cka/ServiceTypes.md)
@@ -492,7 +464,7 @@
         - Service Network Accessibility
         - Traffic Redirection Processing
         - Pod Redirection Mechanism
-      - [kube-proxy Operations](Cka/KubeProxyOperations.md)
+      - [kube-proxy](Cka/KubeProxy.md)
         - API Server Monitoring
         - Kernel Rule Creation
         - Traffic Interception
@@ -532,3 +504,5 @@
         - [Ingress Routing](Cka/IngressRouting.md)
           - Host-based Routing
           - Path-based Routing
+      - [Ingress TLS](Cka/IngressTLS.md)
+  - ⚠️ [Advanced Topics](../Optional/Advanced.md)

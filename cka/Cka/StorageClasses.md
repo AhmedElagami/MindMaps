@@ -2,6 +2,9 @@
 
 ## Content
 
+### ❓ How do StorageClasses support local PersistentVolumes and what role does node affinity play?
+StorageClasses can reference local PersistentVolumes that bind to specific nodes using node affinity rules.
+
 ### ❓ What are StorageClasses and in which API group are they resources, and how do they allow applications to define different classes of storage?
 Storage classes are resources in the storage.k8s.io API group. As the name suggests, StorageClasses let you define different classes of storage that apps can request. How you define your classes is up to you and will depend on the types of storage you have available.
 

@@ -2,6 +2,10 @@
 
 ## Content
 
+- Supports `reclaimPolicy` (Retain or Delete).
+- `volumeMode` can be Filesystem or Block.
+- Many volumes allow expansion when `allowVolumeExpansion` is true.
+
 ### ❓ Analyze the following full table output to determine the capacity, access modes, reclaim policy, status, and storage class association of the PV.
 The output shows the PV has a CAPACITY of 10Gi, ACCESS MODES of RWO (ReadWriteOnce), RECLAIM POLICY of Delete, STATUS of Bound (to the pvc-test claim), and is associated with the STORAGECLASS 'linode-block-storage'.
 
