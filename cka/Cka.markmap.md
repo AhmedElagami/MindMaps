@@ -20,24 +20,6 @@
         - Beta API Resources
         - GA Stable Resources
         - [Deprecation Detection](Cka/DeprecationDetection.md)
-      - API Security
-        - [mTLS Security Requirements](Cka/MtlsSecurityRequirements.md)
-        - [Certificate Authority Criticality](Cka/CertificateAuthorityCriticality.md)
-        - [Request Logging Requirement](Cka/RequestLoggingRequirement.md)
-      - Admission Controllers
-        - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
-          - Validating vs Mutating Admission
-          - API request interception
-          - ValidatingAdmissionPolicy (CEL)
-        - Built-in Admission Plugins
-			- NamespaceLifecycle
-			- LimitRanger
-			- ResourceQuota
-		  - Dynamic Admission Webhooks
-			- ValidatingWebhookConfiguration
-			- MutatingWebhookConfiguration
-      - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
-        - Enforces Pod Security Standards
         - Enforcement Modes
           - Warn Mode
           - Audit Mode
@@ -122,19 +104,30 @@
       - Programming Models
         - [Declarative Model](Cka/DeclarativeModel.md)
         - [Imperative Model](Cka/ImperativeModel.md)
-          - Cluster Lifecycle Management
-            - Cluster Bootstrapping
-            - Cluster Upgrades
-            - Backup and Restore
-            - Cluster Maintenance
-            - [Cert Management](Cka/CertManagement.md)
-            - Cluster Add-ons
-              - [DNS add-on (CoreDNS)](Cka/CorednsArchitecture.md) (see Networking)
-          - Security and Access Control
-            - RBAC
-            - Service Accounts
-            - Secrets and ConfigMaps
-            - [Encryption at Rest](Cka/EncryptionAtRest.md)
+  - Cluster Setup & Maintenance
+    - [Cluster Bootstrapping](Cka/ClusterBootstrapping.md)
+    - [Upgrading Clusters](Cka/ClusterUpgrades.md)
+    - [Certificate Management](Cka/CertManagement.md)
+    - [etcd Backup & Restore](Cka/EtcdBackupRestore.md)
+    - [Node Replacement Workflow](Cka/NodeReplacementWorkflow.md)
+  - Security & Authentication
+    - [Authentication & Authorization](Cka/AuthenticationAndAuthorization.md)
+    - [RBAC](Cka/RBAC.md)
+    - [Service Accounts](Cka/ServiceAccounts.md)
+    - Secrets & ConfigMaps
+      - [Secrets](Cka/Secrets.md)
+      - [ConfigMaps](Cka/ConfigMaps.md)
+    - [Encryption at Rest](Cka/EncryptionAtRest.md)
+    - API Server Security
+      - [mTLS Security Requirements](Cka/MtlsSecurityRequirements.md)
+      - [Certificate Authority Criticality](Cka/CertificateAuthorityCriticality.md)
+      - [Request Logging Requirement](Cka/RequestLoggingRequirement.md)
+    - Admission Controllers
+      - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
+      - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
+    - Pod Security Standards
+      - [Pod Security](Cka/PodSecurity.md)
+      - [Security Standards](Cka/SecurityStandards.md)
   - Workload Management
     - Pod Architecture
       - [Pod Fundamentals](Cka/PodFundamentals.md)
@@ -174,11 +167,6 @@
           - Always Restart Containers
           - Never Restart Containers
           - OnFailure Restart Only
-      - [Pod Security](Cka/PodSecurity.md)
-        - [Security Standards](Cka/SecurityStandards.md)
-          - Privileged Policy
-          - Baseline Policy
-          - [Restricted Policy](Cka/RestrictedPolicy.md)
       - [Probes](Cka/Probes.md)
     - [Cloud-Native Features](Cka/CloudNativeFeatures.md)
       - Self-Healing Capability
@@ -283,6 +271,9 @@
           - [Topology Spread Constraints](Cka/TopologySpreadConstraints.md)
           - NodeSelectors
           - PriorityClasses and Preemption
+          - DaemonSet scheduling rules
+          - Node cordon/drain/uncordon
+          - [Static Pods](Cka/StaticPods.md)
   - Storage Architecture
     - [Core Components](Cka/CoreComponents.md)
       - [Storage Provider Types](Cka/StorageProviderTypes.md)
@@ -356,29 +347,36 @@
       - Data Integrity
         - Data Preservation
         - Scale Down Protection
-        - Concurrent Write Prevention
         - Volume Mapping Enforcement
-        - Snapshot Scheduling
-        - Replication Settings
   - Observability and Troubleshooting
-	  - Logging
-	    - kubectl logs
-	    - Cluster logging integrations (EFK/ELK, Loki)
+          - Logging
+            - kubectl logs
+            - Cluster logging integrations (EFK/ELK, Loki)
           - Monitoring
             - [metrics-server](Cka/MetricsServer.md)
               - HPA requires metrics-server
               - Prometheus integration
             - Prometheus & Grafana
+          - [kubectl Debugging Patterns](Cka/KubectlDebugPatterns.md)
+            - kubectl get/describe
+            - Events
           - [Debugging Pods](Cka/DebuggingPods.md)
             - kubectl exec
             - kubectl debug (ephemeral containers)
             - crictl and containerd logs
             - systemd/journald
-            - Events and describe
-	  - Node Troubleshooting
-	    - kubelet logs
-	    - systemd services
-	    - Resource pressure detection
+          - Node Troubleshooting
+            - kubelet logs
+            - systemd services
+            - Resource pressure detection
+              - MemoryPressure
+              - DiskPressure
+              - PIDPressure
+            - Control plane component logs
+              - kube-apiserver
+              - controller-manager
+              - scheduler
+              - etcd
   - Networking and Service Discovery
 	- Container Networking Interface (CNI)
 	  - CNI Fundamentals
@@ -492,8 +490,16 @@
           - Host-based Routing
           - Path-based Routing
       - [Ingress TLS](Cka/IngressTLS.md)
+    - Networking Troubleshooting
+      - kubectl port-forward
+      - Service to Pod connectivity debugging (DNS, curl, busybox pod)
+      - [NetworkPolicy Labs](Cka/NetworkPolicyLabs.md)
   - ⚠️ [Advanced Topics](../Optional/Advanced.md)
     - [Managed Control Planes](Cka/ManagedControlPlanes.md)
     - [Hosted Kubernetes Benefits](Cka/HostedBenefits.md)
     - [Trade-offs and Limitations](Cka/Tradeoffs.md)
     - [Hybrid and Multi-Cluster](Cka/HybridMultiCluster.md)
+    - Storage
+      - Concurrent Write Prevention
+      - Snapshot Scheduling
+      - Replication Settings
