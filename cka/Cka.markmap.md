@@ -35,7 +35,11 @@
 		  - [Dynamic Admission Webhooks](Cka/AdmissionWebhooks.md)
 			- ValidatingWebhookConfiguration
 			- MutatingWebhookConfiguration
-		  - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
+      - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
+        - Enforcement Modes
+          - Warn Mode
+          - Audit Mode
+          - Enforce Mode
 			- PodSecurity (Baseline / Restricted)
 			- Custom policy enforcement
     - Controllers and Reconciliation
@@ -213,11 +217,6 @@
           - Privileged Policy
           - Baseline Policy
           - [Restricted Policy](Cka/RestrictedPolicy.md)
-        - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
-          - Enforcement Modes
-            - Warn Mode
-            - Audit Mode
-            - Enforce Mode
     - [Cloud-Native Features](Cka/CloudNativeFeatures.md)
       - Self-Healing Capability
       - [Rollback Functionality](Cka/RollbackFunctionality.md)
