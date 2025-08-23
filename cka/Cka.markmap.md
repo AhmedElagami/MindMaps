@@ -37,12 +37,12 @@
 			- ValidatingWebhookConfiguration
 			- MutatingWebhookConfiguration
       - [Security Admission Controllers](Cka/SecurityAdmissionControllers.md)
+        - Enforces Pod Security Standards
         - Enforcement Modes
           - Warn Mode
           - Audit Mode
           - Enforce Mode
-			- PodSecurity (Baseline / Restricted)
-			- Custom policy enforcement
+        - Custom policy enforcement
     - Controllers and Reconciliation
       - [Architecture & State Management](Cka/ControllerArchitectureAndStateManagement.md)
       - [Controller Types](Cka/ControllerTypes.md)
@@ -214,28 +214,21 @@
         - StorageClass Requirement
         - [Headless Service Requirement](Cka/HeadlessServiceRequirement.md)
         - [StatefulSet Definition](Cka/StatefulsetDefinition.md)
-	- Other Workload Types
-	  - DaemonSets
-	    - Node-local services
-	    - Log collection agents
-	    - Networking agents
-	  - Jobs
-	    - One-time tasks
-	    - Parallelism and completions
-          - CronJobs
-            - Scheduled workloads
-            - Time-based execution
-          - ⚠️ [Static Pods](Cka/StaticPods.md)
-          - [Autoscaling](Cka/Autoscaling.md)
-            - HorizontalPodAutoscaler (HPA)
-              - Depends on metrics-server (see Monitoring)
-              - Scales replicas based on CPU/memory/metrics
-            - ⚠️ VerticalPodAutoscaler (VPA)
-              - Adjusts Pod resource requests/limits
-              - Not native in all clusters
-            - Cluster Autoscaler
-              - Node scaling based on scheduling needs
-              - Cloud-provider integration
+	- Additional Controllers
+	  - DaemonSet
+	  - Job
+	  - CronJob
+	  - ⚠️ [Static Pod](Cka/StaticPods.md)
+	- [Autoscaling](Cka/Autoscaling.md)
+	  - HorizontalPodAutoscaler (HPA)
+	    - Depends on metrics-server (see Monitoring)
+	    - Scales replicas based on CPU/memory/metrics
+	  - ⚠️ VerticalPodAutoscaler (VPA)
+	    - Adjusts Pod resource requests/limits
+	    - Not native in all clusters
+	  - Cluster Autoscaler
+	    - Node scaling based on scheduling needs
+	    - Cloud-provider integration
     - Pod Management
       - [Naming and Identity](Cka/NamingAndIdentity.md)
         - [Predictable Naming Convention](Cka/PredictableNamingConvention.md)
@@ -447,8 +440,9 @@
         - [Short Name Local Resolution](Cka/ShortNameLocalResolution.md)
       - [CoreDNS Architecture](Cka/CorednsArchitecture.md)
         - CoreDNS Deployment
-        - ⚠️ [kube-dns Service Configuration](Cka/KubeDnsServiceConfiguration.md)
-        - EndpointSlice Management
+        - Integrates with EndpointSlice
+        - ⚠️ Legacy DNS
+          - [kube-dns Service Configuration](Cka/KubeDnsServiceConfiguration.md)
     - [Network Routing](Cka/NetworkRouting.md)
       - [ClusterIP Routing](Cka/ClusteripRouting.md)
         - Service Network Accessibility
