@@ -26,9 +26,9 @@
         - [Request Logging Requirement](Cka/RequestLoggingRequirement.md)
       - Admission Controllers
         - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
-              - Validating vs Mutating Admission
-              - API request interception
-              - ValidatingAdmissionPolicy (CEL)
+          - Validating vs Mutating Admission
+          - API request interception
+          - ValidatingAdmissionPolicy (CEL)
         - Built-in Admission Plugins
 			- NamespaceLifecycle
 			- LimitRanger
@@ -72,6 +72,9 @@
           - [High Availability](Cka/HighAvailability.md)
             - Odd Number Replica Preference
             - Three or Five Nodes Recommendation
+            - Multi-Node Deployment
+            - Cross-Availability Zone Spreading
+            - Fault Tolerance Benefits
           - [etcdctl Operations](Cka/EtcdctlOperations.md)
         - Scheduler
 			- [Scheduling Process](Cka/SchedulingProcess.md)
