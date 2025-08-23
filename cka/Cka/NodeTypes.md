@@ -11,7 +11,7 @@ Kubernetes is both of the following:
 ### ❓ **What are the key differences between control plane nodes and worker nodes?**
 - **Control plane nodes**: Must be Linux, implement the Kubernetes intelligence, run control plane services (API server, scheduler, controllers), and every cluster needs at least one control plane node (three or five recommended for high availability).
 
-- **Worker nodes**: Can be Linux or Windows, run business applications, and almost all cloud-native apps are Linux apps requiring Linux worker nodes. A single Kubernetes cluster can have a mix of Linux and Windows worker nodes, and Kubernetes is intelligent enough to schedule apps to the correct nodes.
+- **Worker nodes**: Run business applications. Most clusters use Linux; Windows support exists for niche workloads.
 
 ### ❓ What does the diagram in Figure 2.1 illustrate about the composition of a typical Kubernetes cluster?
 Figure 2.1 shows a cluster with three control plane nodes and three workers. The diagram illustrates that a Kubernetes cluster consists of both control plane nodes and worker nodes, with control plane nodes implementing the Kubernetes intelligence and worker nodes running business applications.
