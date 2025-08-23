@@ -2,7 +2,7 @@
 
 ## Content
 
-See **Admission → Security Admission Controllers → PodSecurity** ([Security Admission Controllers](SecurityAdmissionControllers.md)).
+Pod Security Standards (Privileged, Baseline, Restricted) define required Pod policies and are enforced by [Security Admission Controllers](SecurityAdmissionControllers.md).
 
 ### ❓ Why should privileged Pod creation by human users trigger immediate investigation, and how are privileged Pods typically created when needed?
 Privileged Pod creation by a human user: Privileged Pods can often gain root-level access on the node, and you will typically have policies in place to prevent their creation. On the rare occasions they are needed, they will usually be created by automated processes with service accounts.

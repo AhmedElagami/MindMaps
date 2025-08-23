@@ -2,7 +2,7 @@
 
 ## Content
 
-See [Pod Security](PodSecurity.md) for policy details. PodSecurity Admission replaces the deprecated PodSecurityPolicy.
+Enforces Pod Security Standards. See [Pod Security](PodSecurity.md) for policy details. PodSecurity Admission replaces the deprecated PodSecurityPolicy.
 
 ### ❓ At what level does Pod Security Admission (PSA) operate, what type of Kubernetes component implements it, and what are its three enforcement modes?
 It works at the Namespace level and is implemented as a validating admission controller. PSA offers three enforcement modes: warn (Allows violating Pods to be created but issues a user-facing warning), audit (Allows violating Pods to be created but logs an audit event), and enforce (Rejects Pods if they violate the policy).
