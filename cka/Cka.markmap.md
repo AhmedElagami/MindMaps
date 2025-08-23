@@ -25,11 +25,11 @@
         - [Certificate Authority Criticality](Cka/CertificateAuthorityCriticality.md)
         - [Request Logging Requirement](Cka/RequestLoggingRequirement.md)
       - Admission Controllers
-                  - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
-                        - Validating vs Mutating Admission
-                        - API request interception
-                        - ValidatingAdmissionPolicy (CEL)
-                  - [Built-in Admission Plugins](Cka/BuiltInAdmissionPlugins.md)
+        - [Admission Controller Fundamentals](Cka/AdmissionControllers.md)
+              - Validating vs Mutating Admission
+              - API request interception
+              - ValidatingAdmissionPolicy (CEL)
+        - [Built-in Admission Plugins](Cka/BuiltInAdmissionPlugins.md)
 			- NamespaceLifecycle
 			- LimitRanger
 			- ResourceQuota
@@ -81,18 +81,15 @@
 				- Task Watching
 				- Node Identification
 				- Task Assignment
-                        - [Node Assessment Criteria](Cka/NodeAssessmentCriteria.md)
-                                - See [Taints and Tolerations](Cka/TaintsAndTolerations.md)
-                                - [Affinity Rules](Cka/AffinityRules.md)
-                                - [Resource Availability](Cka/ResourceAvailability.md)
+          - [Node Assessment Criteria](Cka/NodeAssessmentCriteria.md)
+            - See [Taints and Tolerations](Cka/TaintsAndTolerations.md)
+            - [Affinity Rules](Cka/AffinityRules.md)
+            - [Resource Availability](Cka/ResourceAvailability.md)
       - [Worker Node Components](Cka/WorkerNodeComponents.md)
         - [Kubelet Functions](Cka/KubeletFunctions.md)
           - Watches API Server
           - Instructs Runtime Execution
           - Reports Task Status
-        - [Kube-proxy](Cka/KubeProxy.md)
-          - Cluster Networking
-          - Load Balancing
     - Namespace Fundamentals
       - Namespace Concepts
         - [Linux vs Kubernetes Namespaces](Cka/LinuxVsKubernetesNamespaces.md)
@@ -134,7 +131,6 @@
             - Cluster Add-ons
               - [CoreDNS](Cka/CorednsArchitecture.md)
               - [metrics-server](Cka/MetricsServer.md)
-              - kube-proxy ([Kube-proxy](Cka/KubeProxy.md), [Worker Node Components](Cka/WorkerNodeComponents.md))
           - Security and Access Control
             - [RBAC](Cka/RBAC.md)
             - [Service Accounts](Cka/ServiceAccounts.md)
@@ -235,17 +231,15 @@
             - Time-based execution
           - [Static Pods](Cka/StaticPods.md)
           - [Autoscaling](Cka/Autoscaling.md)
-                  - HorizontalPodAutoscaler (HPA)
-                        - Depends on metrics-server
-                        - Scales replicas based on CPU/memory/metrics
-                  - VerticalPodAutoscaler (VPA)
-                        - Adjusts Pod resource requests/limits
-                        - Not native in all clusters
-                  - Cluster Autoscaler
-                        - Node scaling based on scheduling needs
-                        - Cloud-provider integration
-
-
+            - HorizontalPodAutoscaler (HPA)
+              - Depends on metrics-server
+              - Scales replicas based on CPU/memory/metrics
+            - VerticalPodAutoscaler (VPA)
+              - Adjusts Pod resource requests/limits
+              - Not native in all clusters
+            - Cluster Autoscaler
+              - Node scaling based on scheduling needs
+              - Cloud-provider integration
     - Pod Management
       - [Naming and Identity](Cka/NamingAndIdentity.md)
         - [Predictable Naming Convention](Cka/PredictableNamingConvention.md)
@@ -290,10 +284,10 @@
 	  - [Anti-Affinity Distribution](Cka/AntiAffinityDistribution.md)
 	  - High Availability Strategy
           - [Using Taints and Tolerations](Cka/TaintsAndTolerations.md)
-                  - When to taint nodes vs add tolerations
-                  - Common patterns (e.g., GPU, spot/preemptible, system workloads)
-                  - Best practices & pitfalls
-                  - Example YAML snippets
+            - When to taint nodes vs add tolerations
+            - Common patterns (e.g., GPU, spot/preemptible, system workloads)
+            - Best practices & pitfalls
+            - Example YAML snippets
           - [Topology Spread Constraints](Cka/TopologySpreadConstraints.md)
           - [NodeSelectors](Cka/NodeSelectors.md)
           - [PriorityClasses and Preemption](Cka/PriorityClasses.md)
@@ -379,10 +373,10 @@
 	    - kubectl logs
 	    - Cluster logging integrations (EFK/ELK, Loki)
           - [Monitoring](Cka/Monitoring.md)
-                  - [metrics-server](Cka/MetricsServer.md)
-                    - HPA requires metrics-server
-                    - Prometheus integration
-                  - Prometheus & Grafana
+            - [metrics-server](Cka/MetricsServer.md)
+              - HPA requires metrics-server
+              - Prometheus integration
+            - Prometheus & Grafana
           - [Debugging Pods](Cka/DebuggingPods.md)
             - kubectl exec
             - kubectl debug (ephemeral containers)
@@ -506,3 +500,7 @@
           - Path-based Routing
       - [Ingress TLS](Cka/IngressTLS.md)
   - ⚠️ [Advanced Topics](../Optional/Advanced.md)
+    - [Managed Control Planes](Cka/ManagedControlPlanes.md)
+    - [Hosted Kubernetes Benefits](Cka/HostedBenefits.md)
+    - [Trade-offs and Limitations](Cka/Tradeoffs.md)
+    - [Hybrid and Multi-Cluster](Cka/HybridMultiCluster.md)
