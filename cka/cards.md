@@ -415,6 +415,20 @@ Several Pods are Pending across different namespaces. Use scheduler events to cl
 **Covers:** scheduler failure event patterns, requests & limits, required node affinity, preferred node affinity, pod anti-affinity, apply taints, tolerations, CPU/memory quota enforcement
 
 
+## TIER 1F-A — AUTOSCALING (HPA)
+
+**Scenario 1: Create and Validate an HPA**
+Create an HPA for an existing Deployment using CPU utilization. Ensure CPU requests are set, generate load, and verify scale-out and scale-in behavior.
+**Covers:** Configure workload autoscaling, HPA creation, CPU requests prerequisite, Observe scaling behavior (`kubectl get hpa`, events)
+
+---
+
+**Scenario 2: HPA Exists but Never Scales**
+An HPA is present but remains at current replicas or shows `<unknown>` metrics. Identify and fix the root cause without recreating the workload.
+**Failure causes to identify:** Missing Metrics Server; Missing CPU requests; Wrong HPA target / selector; Metrics access/RBAC issues
+**Covers:** HPA troubleshooting, Metrics Server dependency, `kubectl top` + HPA status/events
+
+
 ## TIER 1G — NETWORKING (VERY HIGH SCORE)
 
 **Scenario 168–176: Internal Service Reachability Failure**
@@ -460,8 +474,8 @@ An application suddenly loses outbound connectivity. Determine whether egress re
 
 ### New Scenario: Gateway API routing
 
-**Task:** Use Gateway API resources to route traffic to a backend service; debug why traffic does not route (wrong parentRef/sectionName/listeners/namespace policy), then fix.
-**Covers:** “Use the Gateway API to manage Ingress traffic” (listed on LF pages). ([Linux Foundation - Education][1])
+**Task:** Use Gateway API resources to route traffic to a backend service; debug why traffic does not route, covering GatewayClass availability/support, controller status, parentRefs/sectionName, allowedRoutes namespace policy, and listener hostname/port mismatches; then fix.
+**Covers:** “Use the Gateway API to manage Ingress traffic” (listed on LF pages). ([Linux Foundation - Education][1]) Debug GatewayClass/controller, parentRef + sectionName matching, allowedRoutes namespace policy, Listener hostname/port issues
 
 ---
 
@@ -604,21 +618,28 @@ No solutions or explanations are included.
 
 ---
 
-### 8. PVC Stuck in Terminating State
+### 8. PVC Resize Has No Effect
+
+**Task:** A PVC resize is applied but capacity does not increase or the filesystem remains unchanged. Identify why and fix it without data loss.
+**Covers:** StorageClass `allowVolumeExpansion`, Filesystem resize requirements, Verification of expanded capacity
+
+---
+
+### 9. PVC Stuck in Terminating State
 
 **Task:** A PVC cannot be deleted and blocks namespace cleanup. Investigate and safely remove it.
 **Covers:** PVC stuck Terminating, Reclaim policies
 
 ---
 
-### 9. CSI Volume Attachment Failure
+### 10. CSI Volume Attachment Failure
 
 **Task:** A Pod cannot start due to volume attachment errors reported by the CSI driver. Restore application availability.
 **Covers:** CSI attach failures, Node-specific storage issues
 
 ---
 
-### 10. CSI Volume Mount Failure
+### 11. CSI Volume Mount Failure
 
 **Task:** A Pod is scheduled but fails during startup with mount errors. Identify whether the issue is related to node configuration or volume setup.
 **Covers:** CSI mount failures, Node-specific storage issues
@@ -771,6 +792,14 @@ This version is **minimal, non-redundant, exam-realistic**, and fully compliant 
 
 ---
 
+### **Scenario 0: kubeadm Preflight Failure (Infrastructure Prep)**
+
+`kubeadm init` fails due to node-level preflight errors. Identify and fix the issue so initialization succeeds.
+**Possible failure causes:** Container runtime not running; Wrong CRI socket; Cgroup driver mismatch; Swap enabled; Missing kernel modules / sysctl settings
+**Covers:** Prepare underlying infrastructure, kubeadm preflight checks, CRI + kubelet alignment
+
+---
+
 ### **Scenario 1: Initialize a New Control Plane with kubeadm**
 
 Bootstrap a new Kubernetes control plane on a provided host using kubeadm with a specified control-plane endpoint and pod network CIDR. Ensure cluster access is configured for a non-root user.
@@ -785,7 +814,15 @@ Generate the required join command on the control plane, manage authentication t
 
 ---
 
-### **Scenario 3: Join an Additional Control Plane Node**
+### **Scenario 3: Worker Join Fails After Token Acceptance**
+
+A worker successfully receives the join command but never becomes `Ready`. Diagnose and fix the node so it registers correctly.
+**Failure causes:** Wrong CRI socket; CNI not installed yet; kubelet misconfiguration; Runtime not healthy
+**Covers:** Node bootstrap troubleshooting, kubelet/runtime dependency, Join failure symptoms
+
+---
+
+### **Scenario 4: Join an Additional Control Plane Node**
 
 Scale the control plane by joining a new control-plane node to the cluster and ensure it integrates correctly with the existing control-plane endpoint.
 **Covers:** Join control-plane node, Control-plane endpoint, Stacked vs external etcd
@@ -793,54 +830,54 @@ Scale the control plane by joining a new control-plane node to the cluster and e
 
 ---
 
-### **Scenario 4: Inspect kubeadm Cluster Configuration**
+### **Scenario 5: Inspect kubeadm Cluster Configuration**
 
 Review the cluster bootstrap configuration stored by kubeadm to determine current settings and control-plane topology.
 **Covers:** kubeadm config view, Stacked vs external etcd
 
 ---
 
-### **Scenario 5: Safely Reset a Node Bootstrapped with kubeadm**
+### **Scenario 6: Safely Reset a Node Bootstrapped with kubeadm**
 
 Remove a node from the cluster and reset it using kubeadm while ensuring no unintended data or configuration loss occurs.
 **Covers:** kubeadm reset safety
 
 ---
 
-### **Scenario 6: Upgrade the Kubernetes Control Plane**
+### **Scenario 7: Upgrade the Kubernetes Control Plane**
 
 Upgrade the control plane to a newer Kubernetes version while adhering to version skew rules and maintaining cluster availability.
 **Covers:** Upgrade control plane, Version skew rules
 
 ---
 
-### **Scenario 7: Upgrade Node Components After Control Plane Upgrade**
+### **Scenario 8: Upgrade Node Components After Control Plane Upgrade**
 
 Upgrade kubelet and kubectl on cluster nodes to versions compatible with the upgraded control plane and validate node readiness.
 **Covers:** Upgrade kubelet, Upgrade kubectl, Version skew rules
 
 ---
 
-### **Scenario 8: Recover from a Failed Control Plane Upgrade**
+### **Scenario 9: Recover from a Failed Control Plane Upgrade**
 
 An attempted control plane upgrade fails mid-process. Restore cluster functionality and bring all components to a consistent, supported state.
 **Covers:** Failed upgrade recovery, Version skew rules
 
 ---
 
-### **Scenario 9: Modify kubelet Configuration Using Supported Methods**
+### **Scenario 10: Modify kubelet Configuration Using Supported Methods**
 
 Adjust kubelet behavior by editing the kubelet configuration file and applying systemd drop-in changes without breaking node registration.
 **Covers:** kubelet config file, kubelet systemd drop-ins
 
 ---
 
-### **Scenario 10: Apply a Change to a Control-Plane Static Pod**
+### **Scenario 11: Apply a Change to a Control-Plane Static Pod**
 
 Update a control-plane component running as a static Pod by modifying its manifest and ensuring the component restarts correctly.
 **Covers:** Control-plane static manifests, Static Pod edit workflow
 
-### Scenario 11: Implement/verify a highly-available control plane
+### Scenario 12: Implement/verify a highly-available control plane
 
 **Task:** Given a multi-control-plane design requirement, confirm the control-plane endpoint/load-balancer config, add/verify an additional control plane node, and validate HA behavior from kubeadm config and node state.
 **Covers:** “Implement and configure a highly-available control plane” objective. ([Linux Foundation - Education][2])
@@ -850,35 +887,35 @@ Update a control-plane component running as a static Pod by modifying its manife
 
 # TIER 3B — ETCD
 
-### **Scenario 11: Inspect etcd Cluster Membership and Health**
+### **Scenario 13: Inspect etcd Cluster Membership and Health**
 
 Determine current etcd cluster membership and verify that all etcd members are healthy using the correct certificates.
 **Covers:** etcd member list, etcd health, etcd cert paths
 
 ---
 
-### **Scenario 12: Create and Verify an etcd Snapshot**
+### **Scenario 14: Create and Verify an etcd Snapshot**
 
 Create a snapshot backup of etcd data and verify that the snapshot is valid and usable for restoration.
 **Covers:** etcd snapshot, Verify snapshot, etcd data dir
 
 ---
 
-### **Scenario 13: Restore etcd from a Snapshot**
+### **Scenario 15: Restore etcd from a Snapshot**
 
 Restore etcd from a snapshot after a simulated data loss event and bring the control plane back online.
 **Covers:** Restore snapshot, Restore impact on cluster, etcd data dir
 
 ---
 
-### **Scenario 14: Diagnose a Failed etcd Snapshot Restore**
+### **Scenario 16: Diagnose a Failed etcd Snapshot Restore**
 
 An etcd snapshot restore fails. Identify and correct issues related to certificates, data directories, or restore configuration.
 **Covers:** Snapshot restore failure causes, etcd cert paths, etcd data dir
 
 ---
 
-### **Scenario 15: Recover Control Plane After etcd Restore**
+### **Scenario 17: Recover Control Plane After etcd Restore**
 
 After restoring etcd, the API server remains unavailable. Determine the etcd topology in use, verify certificate and data paths, update the kubelet configuration file if required, and restore control-plane availability while accounting for expected cluster impact.
 **Covers:** kubelet config file, Stacked vs external etcd, Restore impact on cluster, etcd cert paths, etcd data dir, Control-plane static manifests
@@ -960,4 +997,3 @@ Place it **after Tier 2E** (same objective line item group). ([Linux Foundation 
 
 **Task:** A Custom Resource fails validation or is ignored because apiVersion/kind/schema doesn’t match what’s installed. Fix the manifest using discovery tools and re-apply.
 **Covers:** `kubectl api-resources`, `kubectl explain`, CRD/version alignment.
-
