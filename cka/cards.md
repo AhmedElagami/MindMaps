@@ -783,6 +783,22 @@ Workloads fail after a cluster upgrade. Discover available API resources and ver
 **Task:** `kubectl apply -k` fails due to name/namespace/patch targeting. Fix the kustomization so resources render and apply cleanly without changing base manifests.
 **Covers:** common kustomize failure patterns.
 
+## **TIER 2F — EXTENSION INTERFACES + CRDs/OPERATORS**
+
+### Scenario 1: Diagnose “CNI/CRI/CSI” class failures from symptoms
+
+**Task:** Pods fail with symptoms indicating either (a) CNI networking not set up, (b) CRI/runtime socket issues, or (c) CSI storage attach/mount issues. Classify which interface is implicated and identify the node/component to inspect first.
+**Covers:** “Understand extension interfaces (CNI, CSI, CRI)” as an objective. ([Linux Foundation - Education][1])
+
+### Scenario 2: Install an operator / CRD-backed component
+
+**Task:** Apply manifests that introduce CRDs and an operator/controller, verify CRDs exist, verify controller is running, and create a sample Custom Resource that becomes Ready.
+**Covers:** CRDs, operators install/verify, basic CR lifecycle. ([Linux Foundation - Education][1])
+
+### Scenario 3: Debug a CRD/Operator mismatch
+
+**Task:** A Custom Resource fails validation or is ignored because apiVersion/kind/schema doesn’t match what’s installed. Fix the manifest using discovery tools and re-apply.
+**Covers:** `kubectl api-resources`, `kubectl explain`, CRD/version alignment.
 
 
 ## TIER 3A — CLUSTER ADMIN (KUBEADM)
@@ -975,25 +991,3 @@ Pods are running but cannot communicate over the network. Identify symptoms indi
 **Covers:** CNI plugin missing/broken symptoms
 
 
----
-
----
-
-## 2) Add a small tier: **TIER 2F — EXTENSION INTERFACES + CRDs/OPERATORS**
-
-Place it **after Tier 2E** (same objective line item group). ([Linux Foundation - Education][1])
-
-### Scenario 1: Diagnose “CNI/CRI/CSI” class failures from symptoms
-
-**Task:** Pods fail with symptoms indicating either (a) CNI networking not set up, (b) CRI/runtime socket issues, or (c) CSI storage attach/mount issues. Classify which interface is implicated and identify the node/component to inspect first.
-**Covers:** “Understand extension interfaces (CNI, CSI, CRI)” as an objective. ([Linux Foundation - Education][1])
-
-### Scenario 2: Install an operator / CRD-backed component
-
-**Task:** Apply manifests that introduce CRDs and an operator/controller, verify CRDs exist, verify controller is running, and create a sample Custom Resource that becomes Ready.
-**Covers:** CRDs, operators install/verify, basic CR lifecycle. ([Linux Foundation - Education][1])
-
-### Scenario 3: Debug a CRD/Operator mismatch
-
-**Task:** A Custom Resource fails validation or is ignored because apiVersion/kind/schema doesn’t match what’s installed. Fix the manifest using discovery tools and re-apply.
-**Covers:** `kubectl api-resources`, `kubectl explain`, CRD/version alignment.
