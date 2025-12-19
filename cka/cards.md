@@ -1443,9 +1443,9 @@ Pitfalls:
 Tags: domain:tooling action:create format:helm
 Command:
 ```bash
-helm repo add stable https://charts.helm.sh/stable
+helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
 helm repo update
-helm upgrade --install metrics-server stable/metrics-server -n kube-system \
+helm upgrade --install metrics-server metrics-server/metrics-server -n kube-system \
   --set args[0]='--kubelet-insecure-tls'
 ```
 
@@ -1464,7 +1464,7 @@ Pitfalls:
 Tags: domain:tooling action:observe format:helm
 Command:
 ```bash
-helm template myrelease stable/metrics-server --namespace kube-system > rendered.yaml
+helm template myrelease metrics-server/metrics-server --namespace kube-system > rendered.yaml
 ```
 
 Verify:
@@ -2143,12 +2143,12 @@ kubectl get --raw "/readyz"
 
 Verify:
 ```bash
-kubectl get componentstatuses
+kubectl get --raw "/livez"
 ```
 
 Pitfalls:
 
-* componentstatuses deprecated; rely on /readyz and /livez.
+* Use /readyz and /livez; inspect static pod logs via node runtime if API is flaky.
 * Use admin.conf or correct kubeconfig.
 
 # B6. YAML SKELETONS (MEMORIZE)
@@ -2728,3 +2728,1118 @@ Pitfalls:
 
 * explain shows server schema; ensure correct apiVersion.
 * dry-run=client does not contact cluster; still catches syntax errors.
+
+# CKA v1.34 COVERAGE ADDITIONS (COMPLETE DO/VERIFY/FIX)
+
+## Task: Create ConfigMap from literal and file (imperative)
+Tags: domain:workloads action:create format:kubectl cka:competency:configmaps card:type:do time:2m
+Command:
+```bash
+kubectl create configmap app-cm --from-literal=env=prod --from-file=app.conf=./app.conf \
+  --dry-run=client -o yaml > cm.yaml
+kubectl apply -f cm.yaml
+```
+
+Verify:
+```bash
+kubectl get cm app-cm -o jsonpath='{.data.env}{" "}{.data.app\.conf}{"\n"}'
+```
+
+Pitfalls:
+
+* Escape dots in jsonpath when reading file keys.
+* Namespaces must match workload consuming config.
+
+## Task: Consume ConfigMap via envFrom
+Tags: domain:workloads action:configure format:yaml cka:competency:configmaps card:type:do time:2m
+Manifest:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cm-envfrom
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36
+    envFrom:
+    - configMapRef:
+        name: app-cm
+    command: ["sh","-c","env | grep env= && sleep 3600"]
+```
+
+Verify:
+```bash
+kubectl exec cm-envfrom -- printenv env
+```
+
+Pitfalls:
+
+* Pod fails to start if referenced ConfigMap missing.
+* envFrom loads all keys; use env with valueFrom for single key.
+
+## Task: Consume ConfigMap as single env var
+Tags: domain:workloads action:configure format:yaml cka:competency:configmaps card:type:verify time:30s
+Command:
+```bash
+kubectl set env deploy/web APP_ENV_FROM_CM_CONFIG= --from=configmap/app-cm
+kubectl get deploy web -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="env")].valueFrom.configMapKeyRef.name}{"\n"}'
+```
+
+Verify:
+```bash
+kubectl exec deploy/web -- printenv env
+```
+
+Pitfalls:
+
+* Key mismatch shows empty env var; confirm key names in ConfigMap data.
+
+## Task: Mount ConfigMap as volume and verify file path
+Tags: domain:workloads action:configure format:yaml cka:competency:configmaps card:type:verify time:2m
+Command:
+```bash
+kubectl patch deploy web -p '{
+  "spec":{"template":{"spec":{"volumes":[{"name":"cm-vol","configMap":{"name":"app-cm"}}],
+  "containers":[{"name":"web","volumeMounts":[{"name":"cm-vol","mountPath":"/etc/app"}]}]}}}}'
+kubectl rollout status deploy/web
+```
+
+Verify:
+```bash
+kubectl exec deploy/web -- ls -l /etc/app && kubectl exec deploy/web -- cat /etc/app/app.conf
+```
+
+Pitfalls:
+
+* SubPath mounts need restart on update; whole volume propagates automatically.
+
+## Task: Update ConfigMap and trigger rollout
+Tags: domain:workloads action:edit format:kubectl cka:competency:configmaps card:type:do time:2m
+Command:
+```bash
+kubectl create configmap app-cm --from-literal=env=staging -o yaml --dry-run=client | kubectl apply -f -
+kubectl annotate deploy/web checksum/config="$(kubectl get cm app-cm -o json | sha256sum | awk '{print $1}')" --overwrite
+kubectl rollout restart deploy/web
+```
+
+Verify:
+```bash
+kubectl get pods -l app=web -o jsonpath='{.items[*].metadata.annotations.checksum/config}{"\n"}'
+kubectl logs deploy/web --tail=5
+```
+
+Pitfalls:
+
+* Without rollout restart, pods may keep stale config if using envFrom.
+* Rolling update needs available replicas; ensure readiness probes pass.
+
+## Task: Debug app not picking up ConfigMap values
+Tags: domain:workloads action:debug format:kubectl cka:competency:configmaps card:type:fix time:2m
+Checklist:
+```bash
+kubectl get pod -n appns app-pod -o jsonpath='{.spec.volumes[*].configMap.name}{"\n"}'
+kubectl exec app-pod -n appns -- ls /etc/app
+kubectl rollout history deploy/app -n appns
+kubectl get events -n appns --sort-by=.lastTimestamp | tail
+```
+
+Fix:
+
+* If ConfigMap wrong namespace → recreate in appns.
+* If env var empty → correct key name/valueFrom.
+* If pods old → rollout restart deploy/app.
+
+Pitfalls:
+
+* SubPath mounts require pod recreate after ConfigMap update.
+
+## Task: Create Secret from literal and file (dry-run YAML)
+Tags: domain:workloads action:create format:kubectl cka:competency:secrets card:type:do time:2m
+Command:
+```bash
+kubectl create secret generic app-secret --from-literal=password=s3cr3t \
+  --from-file=token=./token.txt --dry-run=client -o yaml > secret.yaml
+kubectl apply -f secret.yaml
+```
+
+Verify:
+```bash
+kubectl get secret app-secret -o jsonpath='{.data.password}' | base64 -d
+```
+
+Pitfalls:
+
+* Secrets stored base64 encoded, not encrypted by default.
+* Keep files out of version control.
+
+## Task: Consume Secret via envFrom
+Tags: domain:workloads action:configure format:yaml cka:competency:secrets card:type:do time:30s
+Command:
+```bash
+kubectl set env deploy/web --from=secret/app-secret
+kubectl rollout status deploy/web
+```
+
+Verify:
+```bash
+kubectl exec deploy/web -- printenv password
+```
+
+Pitfalls:
+
+* Missing secret causes deployment to fail scheduling.
+
+## Task: Use Secret key as single env var
+Tags: domain:workloads action:configure format:yaml cka:competency:secrets card:type:verify time:30s
+Manifest:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-key-env
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36
+    env:
+    - name: APP_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: app-secret
+          key: token
+    command: ["sh","-c","echo $APP_TOKEN && sleep 3600"]
+```
+
+Verify:
+```bash
+kubectl exec secret-key-env -- printenv APP_TOKEN
+```
+
+Pitfalls:
+
+* Wrong key name yields EmptyDir-style missing var; check describe pod warnings.
+
+## Task: Mount Secret as volume and note permissions
+Tags: domain:workloads action:configure format:yaml cka:competency:secrets card:type:verify time:30s
+Command:
+```bash
+kubectl patch deploy web -p '{
+  "spec":{"template":{"spec":{"volumes":[{"name":"secret-vol","secret":{"secretName":"app-secret"}}],
+  "containers":[{"name":"web","volumeMounts":[{"name":"secret-vol","mountPath":"/etc/secret","readOnly":true}]}]}}}}'
+kubectl rollout status deploy/web
+```
+
+Verify:
+```bash
+kubectl exec deploy/web -- ls -l /etc/secret
+```
+
+Pitfalls:
+
+* Default file mode 0400; set defaultMode if app needs different permissions.
+
+## Task: Create docker-registry Secret and attach imagePullSecrets
+Tags: domain:workloads action:create format:kubectl cka:competency:secrets card:type:do lab:required time:2m
+Command:
+```bash
+kubectl create secret docker-registry regcred --docker-server=index.docker.io \
+  --docker-username=user --docker-password=pass --docker-email=user@example.com
+kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"regcred"}]}'
+```
+
+Verify:
+```bash
+kubectl run pullcheck --image=private/repo:tag --restart=Never --dry-run=client -o yaml
+```
+
+Pitfalls:
+
+* Scope: namespace-specific; create in each ns or set imagePullSecrets per pod.
+
+## Task: Debug ImagePullBackOff due to pull secret
+Tags: domain:workloads action:fix format:kubectl cka:competency:secrets card:type:fix time:2m
+Checklist:
+```bash
+kubectl describe pod failing-pod
+kubectl get secret regcred -o yaml
+kubectl get sa default -o yaml
+```
+
+Fix:
+
+* Create correct docker-registry secret; patch pod spec imagePullSecrets.
+* Wrong server URL → recreate secret with proper --docker-server.
+
+Pitfalls:
+
+* Secret name typo common; use imagePullSecrets list order does not matter.
+
+## Task: Configure topologySpreadConstraints and fix Pending skew
+Tags: domain:workloads action:configure format:yaml cka:competency:scheduling card:type:do time:2m
+Command:
+```bash
+kubectl patch deploy web -p '{
+  "spec":{"template":{"spec":{"topologySpreadConstraints":[{
+    "maxSkew":1,"topologyKey":"topology.kubernetes.io/zone","whenUnsatisfiable":"DoNotSchedule",
+    "labelSelector":{"matchLabels":{"app":"web"}},"matchLabelKeys":["app"]}]}}}}'
+```
+
+Verify:
+```bash
+kubectl get pods -l app=web -o wide --sort-by=.spec.nodeName
+kubectl describe pod <pending-pod> | grep -A3 Unschedulable
+```
+
+Pitfalls:
+
+* Ensure nodes labeled with topologyKey; otherwise pods pend.
+* whenUnsatisfiable=ScheduleAnyway ignores skew but may concentrate pods.
+
+## Task: Fix scheduling failure by adjusting resource requests/limits
+Tags: domain:workloads action:fix format:kubectl cka:competency:scheduling card:type:fix time:2m
+Command:
+```bash
+kubectl describe pod heavy | grep -A3 -e "Insufficient"
+kubectl patch deploy heavy -p '{
+  "spec":{"template":{"spec":{"containers":[{"name":"app","resources":{
+    "requests":{"cpu":"100m","memory":"128Mi"},"limits":{"cpu":"500m","memory":"256Mi"}}}]}}}}'
+kubectl rollout status deploy/heavy
+```
+
+Verify:
+```bash
+kubectl get pods -l app=heavy -o wide
+```
+
+Pitfalls:
+
+* Requests drive scheduling; limits do not help placement.
+* Node allocatable may still be too small; consider scale-out.
+
+## Task: Confirm LimitRange defaulting applies
+Tags: domain:workloads action:verify format:kubectl cka:competency:scheduling card:type:verify time:30s
+Command:
+```bash
+kubectl create ns limits-demo
+kubectl get limitrange -n limits-demo -o wide
+kubectl run lr-pod --image=busybox:1.36 -n limits-demo --restart=Never -- /bin/sleep 3600
+kubectl describe pod lr-pod -n limits-demo | grep -A2 "Limits:" -m1
+```
+
+Pitfalls:
+
+* Default LimitRange only applies when requests/limits omitted.
+* Delete namespace after lab to clean up.
+
+## Task: Observe pod preemption due to PriorityClass
+Tags: domain:workloads action:verify format:kubectl cka:competency:scheduling card:type:verify time:2m
+Command:
+```bash
+kubectl get priorityclass
+kubectl describe pod preempted-pod | grep -i preempt
+kubectl get events --field-selector reason=Preempting --sort-by=.lastTimestamp | tail
+```
+
+Pitfalls:
+
+* Preemption happens only if higher-priority pod fits after evictions.
+* System priorities start with system-; avoid overriding.
+
+## Task: StatefulSet operations (scale/update/stable DNS)
+Tags: domain:workloads action:configure format:kubectl cka:competency:statefulsets card:type:do time:2m
+Command:
+```bash
+kubectl scale sts web-db --replicas=3
+kubectl patch sts web-db -p '{"spec":{"updateStrategy":{"type":"RollingUpdate"}}}'
+kubectl get pod -l app=web-db -o custom-columns=NAME:.metadata.name,PODIP:.status.podIP,HOST:.spec.subdomain
+```
+
+Verify:
+```bash
+kubectl exec web-db-0 -- nslookup web-db-0.web-db
+```
+
+Pitfalls:
+
+* PVCs stick to ordinal; deleting pod keeps PVC.
+* Parallel update strategy available only with allowance; default is OrderedReady.
+
+## Task: DaemonSet update and rollback
+Tags: domain:workloads action:fix format:kubectl cka:competency:daemonsets card:type:fix time:30s
+Command:
+```bash
+kubectl rollout status ds/node-agent -n kube-system
+kubectl set image ds/node-agent agent=repo/agent:v2 -n kube-system
+kubectl rollout undo ds/node-agent -n kube-system
+```
+
+Verify:
+```bash
+kubectl get pods -n kube-system -l app=node-agent -o wide
+```
+
+Pitfalls:
+
+* DaemonSets can use surge during update only with maxUnavailable control.
+* Rollback requires revision history enabled.
+
+## Task: Job and CronJob control knobs
+Tags: domain:workloads action:configure format:yaml cka:competency:jobs card:type:verify time:2m
+Command:
+```bash
+kubectl patch cronjob simple-cj -p '{"spec":{"concurrencyPolicy":"Forbid","startingDeadlineSeconds":120}}'
+kubectl patch job simple-job -p '{"spec":{"ttlSecondsAfterFinished":60}}'
+```
+
+Verify:
+```bash
+kubectl get cronjob simple-cj -o jsonpath='{.spec.concurrencyPolicy}{" "}{.spec.startingDeadlineSeconds}{"\n"}'
+kubectl get job simple-job -o jsonpath='{.spec.ttlSecondsAfterFinished}{"\n"}'
+```
+
+Pitfalls:
+
+* Missed CronJobs beyond startingDeadlineSeconds are skipped.
+* TTL controller must be enabled (default on new clusters).
+
+## Task: Highly-available control-plane endpoint in kubeadm config
+Tags: domain:cluster-arch action:observe format:node-shell cka:competency:ha-control-plane card:type:verify lab:required time:2m
+Command:
+```bash
+sudo cat /etc/kubernetes/kubeadm-config.yaml | grep controlPlaneEndpoint -A2
+```
+
+Verify:
+```bash
+grep controlPlaneEndpoint /etc/kubernetes/kubeadm-config.yaml
+```
+
+Pitfalls:
+
+* Missing endpoint leads to API servers advertising node IPs.
+
+## Task: Join additional control-plane node
+Tags: domain:cluster-arch action:create format:node-shell cka:competency:ha-control-plane card:type:do lab:required time:2m
+Command:
+```bash
+kubeadm token create --print-join-command   # run on existing CP
+kubeadm init phase upload-certs --upload-certs
+# on new node:
+sudo <join-command> --control-plane --certificate-key <key>
+```
+
+Verify:
+```bash
+kubectl get nodes -o wide | grep control-plane
+```
+
+Pitfalls:
+
+* Cert key valid 2 hours; re-upload if expired.
+* Ensure load balancer points to all API servers.
+
+## Task: Distinguish stacked-etcd vs external-etcd
+Tags: domain:cluster-arch action:observe format:node-shell cka:competency:ha-control-plane card:type:verify lab:required time:30s
+Command:
+```bash
+ls /etc/kubernetes/manifests | grep etcd && sudo crictl ps | grep etcd
+grep "\--etcd-servers" /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+Pitfalls:
+
+* External etcd: no etcd static pod on node; apiserver --etcd-servers points to LB.
+
+## Task: API server behind LB health check
+Tags: domain:cluster-arch action:verify format:kubectl cka:competency:ha-control-plane card:type:verify lab:required time:30s
+Command:
+```bash
+kubectl get --raw /readyz
+curl -k https://<controlplane-lb>:6443/readyz
+```
+
+Pitfalls:
+
+* LB health must probe /readyz; misconfig causes flapping.
+
+## Task: Troubleshoot NotReady control-plane node in HA
+Tags: domain:cluster-arch action:fix format:node-shell cka:competency:ha-control-plane card:type:fix lab:required time:2m
+Command:
+```bash
+kubectl describe node <cp-node>
+sudo journalctl -u kubelet -n 50
+sudo crictl logs $(sudo crictl ps --name kube-apiserver -q)
+```
+
+Pitfalls:
+
+* etcd quorum may still be healthy; check etcd endpoints status.
+* Kubelet cert rotation failures common; renew kubelet.conf.
+
+## Task: Inspect scheduler/controller-manager static pods
+Tags: domain:cluster-arch action:observe format:node-shell cka:competency:ha-control-plane card:type:verify lab:required time:30s
+Command:
+```bash
+sudo ls /etc/kubernetes/manifests | grep kube-scheduler
+sudo cat /etc/kubernetes/manifests/kube-controller-manager.yaml | head
+```
+
+Pitfalls:
+
+* Edits require kubelet restart of static pods; be careful on single surviving node.
+
+## Task: Rotate/renew control-plane certs impact
+Tags: domain:cluster-arch action:observe format:node-shell cka:competency:ha-control-plane card:type:verify lab:required time:2m
+Command:
+```bash
+sudo kubeadm cert check-expiration
+sudo kubeadm cert renew all
+sudo systemctl restart kubelet
+```
+
+Pitfalls:
+
+* Renew on all control-plane nodes; restart components to pick new certs.
+* Backup /etc/kubernetes/pki before renewal.
+
+## Task: Recover after losing one control-plane node
+Tags: domain:cluster-arch action:fix format:node-shell cka:competency:ha-control-plane card:type:fix lab:required time:2m
+Command:
+```bash
+kubectl get nodes
+kubectl get pods -n kube-system -o wide | grep -E 'apiserver|etcd'
+```
+
+Fix:
+
+* Traffic continues via LB if quorum intact; drain/cordon failed node.
+* Recreate node with kubeadm join --control-plane using latest cert key.
+
+Pitfalls:
+
+* etcd with odd members tolerates one loss; two losses break quorum.
+
+## Task: Discover CRDs and new API resources
+Tags: domain:cluster-arch action:observe format:kubectl cka:competency:crds-operators card:type:verify time:30s
+Command:
+```bash
+kubectl get crd | head
+kubectl api-resources | grep -i <keyword>
+```
+
+Pitfalls:
+
+* api-resources hides disabled groups unless server-side enabled.
+
+## Task: List CR instances across namespaces
+Tags: domain:cluster-arch action:observe format:kubectl cka:competency:crds-operators card:type:verify time:30s
+Command:
+```bash
+kubectl get <crd-plural> -A
+```
+
+Pitfalls:
+
+* Some CRDs are namespace-scoped; others cluster-scoped.
+
+## Task: Explain unknown CRD quickly
+Tags: domain:cluster-arch action:observe format:kubectl cka:competency:crds-operators card:type:verify time:30s
+Command:
+```bash
+kubectl explain <Kind> --recursive | less
+```
+
+Pitfalls:
+
+* CRDs may not include full schema; rely on examples in operator docs.
+
+## Task: Install operator via Helm
+Tags: domain:cluster-arch action:create format:helm cka:competency:crds-operators card:type:do lab:required time:2m
+Command:
+```bash
+helm repo add example-operator https://example.com/charts
+helm upgrade --install example-operator example-operator/chart -n operators --create-namespace
+```
+
+Verify:
+```bash
+helm status example-operator -n operators
+kubectl get crd | grep example
+```
+
+Pitfalls:
+
+* Wait for CRDs to register before applying CRs.
+
+## Task: Install operator via Kustomize
+Tags: domain:cluster-arch action:create format:kustomize cka:competency:crds-operators card:type:do lab:required time:2m
+Command:
+```bash
+kubectl apply -k config/default
+```
+
+Verify:
+```bash
+kubectl get pods -n operators
+```
+
+Pitfalls:
+
+* Ensure kustomization.yaml sets namespace; overlays override images easily.
+
+## Task: Verify operator installation health
+Tags: domain:cluster-arch action:verify format:kubectl cka:competency:crds-operators card:type:verify time:30s
+Command:
+```bash
+kubectl get crd | grep example
+kubectl get deploy -n operators -l app=example-operator
+kubectl get events -n operators | tail
+```
+
+Pitfalls:
+
+* Admission webhooks may block CR creation if operator pods not ready.
+
+## Task: Create minimal CustomResource from docs
+Tags: domain:cluster-arch action:create format:yaml cka:competency:crds-operators card:type:do time:2m
+Command:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: example.com/v1
+kind: Example
+metadata:
+  name: example-sample
+spec:
+  size: 1
+EOF
+```
+
+Verify:
+```bash
+kubectl get example example-sample -o yaml
+```
+
+Pitfalls:
+
+* apiVersion must match installed CRD; check kubectl api-resources.
+
+## Task: Debug CustomResource stuck in progressing state
+Tags: domain:cluster-arch action:fix format:kubectl cka:competency:crds-operators card:type:fix time:2m
+Command:
+```bash
+kubectl describe example example-sample
+kubectl get events -A | grep example
+kubectl logs -n operators deploy/example-operator
+```
+
+Pitfalls:
+
+* Invalid spec often shown in status.conditions; fix and reapply.
+
+## Task: Uninstall operator cleanly
+Tags: domain:cluster-arch action:delete format:kubectl cka:competency:crds-operators card:type:fix lab:required time:2m
+Command:
+```bash
+kubectl delete examples --all
+helm uninstall example-operator -n operators || kubectl delete -k config/default
+kubectl delete crd examples.example.com
+```
+
+Pitfalls:
+
+* Deleting CRDs before CRs leaves orphan finalizers; remove finalizers if stuck.
+
+## Task: Prepare infrastructure (ports, swap, sysctls)
+Tags: domain:cluster-arch action:configure format:node-shell cka:competency:infra-prep card:type:do lab:required time:2m
+Command:
+```bash
+sudo swapoff -a && sudo sed -i '/ swap / s/^/#/' /etc/fstab
+sudo modprobe br_netfilter && echo 'net.bridge.bridge-nf-call-iptables=1' | sudo tee /etc/sysctl.d/k8s.conf
+sudo sysctl --system
+```
+
+Verify:
+```bash
+sudo ss -ltn | grep -E '2379|2380|10250|10257|10259'
+```
+
+Pitfalls:
+
+* Forgetting to persist sysctl causes CNI issues after reboot.
+
+## Task: Ensure container runtime running and crictl configured
+Tags: domain:cluster-arch action:verify format:node-shell cka:competency:infra-prep card:type:verify lab:required time:30s
+Command:
+```bash
+sudo systemctl status containerd
+sudo cat /etc/crictl.yaml
+sudo crictl ps -a
+```
+
+Pitfalls:
+
+* Wrong runtimeEndpoint breaks kubectl logs/exec; set to unix:///run/containerd/containerd.sock.
+
+## Task: Extension interfaces quick checks (CNI/CSI/CRI)
+Tags: domain:cluster-arch action:debug format:kubectl cka:competency:extensions card:type:verify time:2m
+Command:
+```bash
+kubectl get pods -n kube-system -l k8s-app=kube-dns
+kubectl get pods -n kube-system -l k8s-app=kube-proxy
+kubectl get csidrivers,csinodes,volumeattachments.storage.k8s.io
+sudo systemctl status containerd || sudo systemctl status crio
+```
+
+Pitfalls:
+
+* CNI manifests usually in /etc/cni/net.d; broken CNI → pods Pending or No route to host.
+
+## Task: Helm/Kustomize debugging for cluster components
+Tags: domain:tooling action:observe format:helm cka:competency:cluster-maintenance card:type:verify time:2m
+Command:
+```bash
+helm status metrics-server -n kube-system
+helm get values metrics-server -n kube-system
+helm get manifest metrics-server -n kube-system | head
+kubectl apply -k overlays/prod
+kubectl kustomize overlays/prod | head
+```
+
+Pitfalls:
+
+* Keep helm release namespace consistent; helm status fails otherwise.
+
+## Task: Connectivity triage between pods
+Tags: domain:net action:debug format:kubectl cka:competency:services-networking card:type:fix time:2m
+Command:
+```bash
+kubectl run netshoot --rm -it --image=nicolaka/netshoot -- /bin/sh
+# inside:
+ping -c1 <pod-ip> || echo "routing?"
+nslookup web-svc || echo "dns?"
+curl -v web-svc.default.svc.cluster.local:80 || echo "svc?"
+```
+
+Pitfalls:
+
+* Distinguish DNS failure (NXDOMAIN) vs timeout (routing/NP).
+
+## Task: NetworkPolicy default deny ingress+egress then allow
+Tags: domain:net action:create format:yaml cka:competency:services-networking card:type:do lab:required time:2m
+Command:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: deny-all}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+EOF
+kubectl apply -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-app}
+spec:
+  podSelector: {matchLabels: {app: web}}
+  ingress:
+  - from:
+    - namespaceSelector: {matchLabels: {name: client}}
+    - podSelector: {matchLabels: {role: client}}
+    ports: [{port: 80}]
+  egress:
+  - to:
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+    ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+EOF
+```
+
+Verify:
+```bash
+kubectl describe netpol deny-all
+```
+
+Pitfalls:
+
+* Ensure CNI supports egress; otherwise policies silently ignored.
+
+## Task: Debug NetworkPolicy blocking traffic
+Tags: domain:net action:fix format:kubectl cka:competency:services-networking card:type:fix time:2m
+Command:
+```bash
+kubectl run tester --rm -it --image=busybox:1.36 --restart=Never -- /bin/sh
+# attempt curl/ping
+kubectl get netpol -A
+kubectl describe netpol allow-app
+```
+
+Pitfalls:
+
+* policies are additive; missing egress rules block DNS.
+* Some CNIs need podSelector+namespaceSelector combo to match pods.
+
+## Task: Service named port and readiness-related empty endpoints
+Tags: domain:net action:verify format:kubectl cka:competency:services-networking card:type:verify time:2m
+Command:
+```bash
+kubectl patch svc web-svc -p '{"spec":{"ports":[{"port":80,"targetPort":"http","name":"web"}]}}'
+kubectl get endpoints web-svc -o yaml
+kubectl describe pod <pod> | grep -A2 Readiness
+```
+
+Pitfalls:
+
+* Pods not Ready remove endpoints; check readinessProbe events.
+
+## Task: Headless Service DNS check
+Tags: domain:net action:verify format:kubectl cka:competency:services-networking card:type:verify time:30s
+Command:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Service
+metadata: {name: web-headless}
+spec:
+  clusterIP: None
+  selector: {app: web}
+  ports: [{port: 80, targetPort: 80}]
+EOF
+kubectl run dnscheck --rm -it --image=busybox:1.36 --restart=Never -- nslookup web-headless.default.svc.cluster.local
+```
+
+Pitfalls:
+
+* Each pod gets A/AAAA record; SRV records include port.
+
+## Task: Identify ingress controller and class
+Tags: domain:net action:observe format:kubectl cka:competency:services-networking card:type:verify time:30s
+Command:
+```bash
+kubectl get ingressclass
+kubectl get pods -A -l app.kubernetes.io/name=ingress-nginx
+kubectl get events -A | grep Ingress
+```
+
+Pitfalls:
+
+* Ingress without matching ingressClassName will not be processed.
+
+## Task: Debug Ingress created but no routing
+Tags: domain:net action:fix format:kubectl cka:competency:services-networking card:type:fix time:2m
+Command:
+```bash
+kubectl describe ingress web-ing-basic
+kubectl get events -n ingress-nginx | tail
+kubectl logs -n ingress-nginx deploy/ingress-nginx-controller --tail=20
+```
+
+Pitfalls:
+
+* Service selector mismatch leads to empty endpoints.
+* Wrong ingressClassName leaves resource Unmanaged.
+
+## Task: Gateway API status checks
+Tags: domain:net action:verify format:kubectl cka:competency:services-networking card:type:verify time:2m
+Command:
+```bash
+kubectl get httproute -o jsonpath='{.items[*].status.parents[*].conditions[*].type}{"\n"}'
+kubectl describe httproute web-route | grep -A2 Accepted
+```
+
+Pitfalls:
+
+* status.parents shows Accepted/Attached/ResolvedRefs; use to spot class mismatch.
+
+## Task: Fix Gateway parentRef or backendRef mismatch
+Tags: domain:net action:fix format:kubectl cka:competency:services-networking card:type:fix lab:required time:2m
+Command:
+```bash
+kubectl get gateway -A
+kubectl patch httproute web-route -p '{"spec":{"parentRefs":[{"name":"web-gw","namespace":"gateway-ns"}]}}'
+kubectl patch httproute web-route -p '{"spec":{"rules":[{"backendRefs":[{"name":"web-svc","port":80}]}]}}'
+```
+
+Verify:
+```bash
+kubectl get httproute web-route -o jsonpath='{.status.parents[*].conditions[*].status}{"\n"}'
+```
+
+Pitfalls:
+
+* Wrong namespace on parentRef blocks attachment.
+
+## Task: CoreDNS deep checks (service IP, resolv.conf, ConfigMap)
+Tags: domain:net action:verify format:kubectl cka:competency:services-networking card:type:verify time:2m
+Command:
+```bash
+kubectl get svc -n kube-system kube-dns -o wide
+kubectl exec deploy/web -- cat /etc/resolv.conf
+kubectl get cm coredns -n kube-system -o yaml | head
+```
+
+Pitfalls:
+
+* dnsPolicy: ClusterFirstWithHostNet required for hostNetwork pods.
+* Wrong dnsConfig may break search paths.
+
+## Task: Troubleshoot CoreDNS when DNS wrong
+Tags: domain:net action:fix format:kubectl cka:competency:services-networking card:type:fix time:2m
+Command:
+```bash
+kubectl get endpoints -n kube-system kube-dns
+kubectl logs -n kube-system -l k8s-app=kube-dns --tail=20
+kubectl exec deploy/web -- nslookup kubernetes.default
+```
+
+Pitfalls:
+
+* If endpoints empty, CoreDNS pods not Ready; restart DS/Deployment.
+
+## Task: StorageClass parameters and default class
+Tags: domain:storage action:verify format:kubectl cka:competency:storage card:type:verify time:30s
+Command:
+```bash
+kubectl get sc -o yaml | grep -A3 parameters
+kubectl patch storageclass standard -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+```
+
+Pitfalls:
+
+* Only one default class; remove annotation from others.
+
+## Task: Reclaim policy behavior (Delete vs Retain)
+Tags: domain:storage action:fix format:kubectl cka:competency:storage card:type:fix time:2m
+Command:
+```bash
+kubectl get pv
+kubectl patch pv pv-retain -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+kubectl delete pvc claim-retain
+```
+
+Verify:
+```bash
+kubectl get pv pv-retain -o jsonpath='{.status.phase}{" "}{.spec.claimRef}{"\n"}'
+```
+
+Pitfalls:
+
+* Retain leaves PV Released; clear claimRef to recycle manually.
+
+## Task: PV/PVC binding selectors
+Tags: domain:storage action:verify format:yaml cka:competency:storage card:type:do time:2m
+Command:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: PersistentVolume
+metadata: {name: pv-sel}
+spec:
+  capacity: {storage: 1Gi}
+  accessModes: [ReadWriteOnce]
+  storageClassName: manual
+  hostPath: {path: /tmp/pv-sel}
+  claimRef:
+    name: sel-claim
+    namespace: default
+EOF
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: sel-claim}
+spec:
+  storageClassName: manual
+  volumeName: pv-sel
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 1Gi}}
+EOF
+```
+
+Verify:
+```bash
+kubectl get pvc sel-claim -o wide
+```
+
+Pitfalls:
+
+* storageClassName must match; volumeName hard binds to specific PV.
+
+## Task: Volume type quick tasks (emptyDir, hostPath, config/secret)
+Tags: domain:storage action:create format:yaml cka:competency:storage card:type:do time:2m
+Command:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata: {name: vol-mix}
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","df -h /cache && ls /host && ls /cfg && sleep 3600"]
+    volumeMounts:
+    - {name: cache, mountPath: /cache}
+    - {name: host, mountPath: /host}
+    - {name: cfg, mountPath: /cfg}
+  volumes:
+  - {name: cache, emptyDir: {}}
+  - {name: host, hostPath: {path: /tmp}}
+  - {name: cfg, configMap: {name: app-cm}}
+EOF
+```
+
+Pitfalls:
+
+* hostPath tied to node; avoid for HA workloads.
+
+## Task: Troubleshoot MountVolume/attach errors
+Tags: domain:storage action:fix format:kubectl cka:competency:storage card:type:fix time:2m
+Command:
+```bash
+kubectl describe pod failing-pod | grep -A4 -e "MountVolume" -e "AttachVolume"
+kubectl get events --field-selector involvedObject.name=failing-pod --sort-by=.lastTimestamp
+kubectl logs -n kube-system -l app=csi-controller --tail=20
+```
+
+Pitfalls:
+
+* Node plugin daemonset issues often cause attach failures; restart CSI node pod.
+
+## Task: Troubleshoot kube-apiserver static pod logs (API flaky)
+Tags: domain:troubleshoot action:debug format:node-shell cka:competency:cluster-components card:type:fix lab:required time:2m
+Command:
+```bash
+sudo crictl ps | grep kube-apiserver
+sudo crictl logs $(sudo crictl ps --name kube-apiserver -q) | tail
+```
+
+Pitfalls:
+
+* If container runtime down, check /var/log/pods/<uid>/kube-apiserver/*.log.
+
+## Task: Debug scheduler/controller-manager crashloop
+Tags: domain:troubleshoot action:debug format:node-shell cka:competency:cluster-components card:type:fix lab:required time:2m
+Command:
+```bash
+sudo crictl logs $(sudo crictl ps --name kube-scheduler -q) | tail
+sudo crictl logs $(sudo crictl ps --name kube-controller-manager -q) | tail
+kubectl get events -n kube-system | grep -E 'scheduler|controller'
+```
+
+Pitfalls:
+
+* Mis-signed kubeconfig causes TLS errors; regen with kubeadm init phase control-plane.
+
+## Task: etcd health basics
+Tags: domain:troubleshoot action:observe format:node-shell cka:competency:cluster-components card:type:verify lab:required time:2m
+Command:
+```bash
+sudo ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/peer.crt \
+  --key=/etc/kubernetes/pki/etcd/peer.key endpoint health
+```
+
+Pitfalls:
+
+* Use peer certs for member-to-member; client certs for apiserver access.
+
+## Task: kubelet troubleshooting (certs, runtime endpoint)
+Tags: domain:troubleshoot action:fix format:node-shell cka:competency:cluster-components card:type:fix lab:required time:2m
+Command:
+```bash
+sudo journalctl -u kubelet -n 50
+sudo kubeadm cert renew kubelet.conf
+sudo systemctl restart kubelet
+```
+
+Pitfalls:
+
+* Check /var/lib/kubelet/config.yaml for containerRuntimeEndpoint.
+
+## Task: kube-proxy issues affecting Service traffic
+Tags: domain:troubleshoot action:debug format:kubectl cka:competency:cluster-components card:type:fix time:2m
+Command:
+```bash
+kubectl get ds kube-proxy -n kube-system -o wide
+kubectl logs -n kube-system -l k8s-app=kube-proxy --tail=20
+kubectl get cm -n kube-system kube-proxy -o yaml | head
+```
+
+Pitfalls:
+
+* Mode iptables/ipvs mismatch with kernel modules leads to no service VIPs.
+
+## Task: Container logs for CoreDNS issues
+Tags: domain:troubleshoot action:debug format:kubectl cka:competency:cluster-components card:type:verify time:30s
+Command:
+```bash
+kubectl logs -n kube-system -l k8s-app=kube-dns --previous --tail=30
+```
+
+Pitfalls:
+
+* CrashLoopBackOff indicates configmap parse errors.
+
+## Task: Multi-container logs and previous attempts
+Tags: domain:troubleshoot action:observe format:kubectl cka:competency:observability card:type:verify time:30s
+Command:
+```bash
+kubectl logs pod/mc-probe -c app --tail=20
+kubectl logs pod/mc-probe -c sidecar --previous --tail=20
+kubectl get pod mc-probe -o jsonpath='{.status.containerStatuses[*].restartCount}{"\n"}'
+```
+
+Pitfalls:
+
+* --previous only works if container restarted.
+
+## Task: Use logs --since/--tail and handle empty logs
+Tags: domain:troubleshoot action:observe format:kubectl cka:competency:observability card:type:verify time:30s
+Command:
+```bash
+kubectl logs deploy/web --since=5m --tail=50
+kubectl logs pod/sidecar-only -c sidecar || echo "check container name/termination state"
+```
+
+Pitfalls:
+
+* Terminated containers without --previous show nothing.
+
+## Task: Monitor metrics availability and debug missing metrics
+Tags: domain:troubleshoot action:debug format:kubectl cka:competency:observability card:type:fix time:2m
+Command:
+```bash
+kubectl top nodes || kubectl get pods -n kube-system | grep metrics-server
+kubectl logs -n kube-system deploy/metrics-server --tail=20
+```
+
+Pitfalls:
+
+* Metrics-server needs correct --kubelet-insecure-tls or CA; TLS errors block metrics.
+
+## Task: Interpret OOMKilled vs CPU throttling
+Tags: domain:troubleshoot action:observe format:kubectl cka:competency:observability card:type:verify time:2m
+Command:
+```bash
+kubectl describe pod app | grep -A3 -E 'OOMKilled|ExitCode: 137'
+kubectl top pod app
+kubectl logs app --tail=5
+```
+
+Pitfalls:
+
+* OOMKilled exit 137; fix by raising memory request/limit.
+* CPU throttling shows high latency but pod stays Running.
+
+## Task: Container output streams awareness
+Tags: domain:troubleshoot action:observe format:kubectl cka:competency:observability card:type:do time:30s
+Command:
+```bash
+kubectl logs pod/mc-probe -c app --timestamps
+kubectl logs pod/mc-probe -c app --previous
+```
+
+Pitfalls:
+
+* Init containers have separate logs; use -c <init-name>.
