@@ -109,8 +109,24 @@ kubectl run nginx --image=nginx
 
 ## Create a multi-container Pod (2 containers)
 
-```bash
-kubectl run mc --image=nginx --dry-run=client -o yaml
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mc
+spec:
+  containers:
+  - name: app
+    image: nginx
+    ports:
+    - containerPort: 80
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+  - name: sidecar
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
 ```
 
 ## Set Pod restart policy Never
@@ -227,10 +243,10 @@ kubectl create job pi --image=busybox -- echo ok
 kubectl create cronjob cj --schedule="*/5 * * * *" --image=busybox -- echo ok
 ```
 
-## Show Pods in CrashLoopBackOff
+## Show non-running Pods (CrashLoopBackOff/Pending)
 
 ```bash
-kubectl get pods | grep CrashLoopBackOff
+kubectl get pods --field-selector=status.phase!=Running
 ```
 
 ## Inspect Pod logs causing CrashLoopBackOff
@@ -249,6 +265,34 @@ kubectl get pods | grep ImagePullBackOff
 
 ```bash
 kubectl describe pod podname
+```
+
+# A2b. SCHEDULING & PLACEMENT ESSENTIALS
+
+## Schedule Pod to labeled node (nodeSelector)
+
+```yaml
+spec:
+  nodeSelector:
+    disktype: ssd
+```
+
+## Allow Pod on tainted node (tolerations)
+
+```yaml
+spec:
+  tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "gpu"
+    effect: "NoSchedule"
+```
+
+## Assign PriorityClass to Pod
+
+```yaml
+spec:
+  priorityClassName: high-priority
 ```
 
 # A3. NETWORKING (CORE ONLY)
@@ -302,20 +346,51 @@ kubectl create ingress ing --rule=host/path=svc:80
 
 ## Create default deny NetworkPolicy
 
-```bash
-kubectl create netpol deny --pod-selector={} --ingress --dry-run=client -o yaml
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
 ```
 
 ## Allow traffic from namespace selector
 
-```bash
-kubectl create netpol allow-ns --pod-selector=app=nginx --from-namespace=team
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ns
+spec:
+  podSelector:
+    matchLabels:
+      app: nginx
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: team
 ```
 
 ## Allow traffic from pod selector
 
-```bash
-kubectl create netpol allow-pod --pod-selector=app=nginx --from-pod=role=client
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-pod
+spec:
+  podSelector:
+    matchLabels:
+      app: nginx
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: client
 ```
 
 # A4. STORAGE (CORVE)
@@ -425,10 +500,68 @@ ETCDCTL_API=3 etcdctl snapshot save snapshot.db \
 --key=/etc/kubernetes/pki/etcd/server.key
 ```
 
-## Restore an etcd snapshot
+## Restore etcd snapshot and rewire static pod
 
 ```bash
-ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir=/var/lib/etcd
+ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir=/var/lib/etcd-from-backup
+```
+
+Edit `/etc/kubernetes/manifests/etcd.yaml` volume hostPath and `--data-dir` to `/var/lib/etcd-from-backup`, then restart kubelet to reload the static pod.
+
+## Initialize control plane with kubeadm
+
+```bash
+kubeadm init --pod-network-cidr=192.168.0.0/16
+```
+
+Verify nodes and apply CNI after init.
+
+## Configure kubeconfig for root after init
+
+```bash
+mkdir -p $HOME/.kube
+cp /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) $HOME/.kube/config
+```
+
+## Join a worker node with kubeadm
+
+```bash
+kubeadm join <cp-ip>:6443 --token <token> \
+--discovery-token-ca-cert-hash sha256:<hash>
+```
+
+Regenerate with `kubeadm token create --print-join-command` if needed.
+
+## Upgrade control plane with kubeadm
+
+```bash
+kubeadm upgrade plan
+kubeadm upgrade apply v1.28.x
+```
+
+Upgrade control plane first, then workers.
+
+## Upgrade kubelet and kubectl on a node
+
+```bash
+apt-get install -y kubelet=1.28.x kubectl=1.28.x
+systemctl restart kubelet
+```
+
+Verify node version skew stays within ±1 minor.
+
+## Renew control plane certificates
+
+```bash
+kubeadm cert renew all
+systemctl restart kubelet
+```
+
+## Create a new bootstrap token
+
+```bash
+kubeadm token create --print-join-command
 ```
 
 # A6. RBAC (CORE)
@@ -930,7 +1063,85 @@ kubectl get pods -n kube-system | grep kube-proxy
 kubectl logs -n kube-system <kube-proxy-pod>
 ```
 
-# B8. EXAM HYGIENE / TIME SAVERS
+# B8. YAML SKELETONS (MEMORIZE)
+
+## Pod with probes (multi-container ready)
+
+```yaml
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: app
+    image: nginx
+    ports:
+    - containerPort: 80
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+  - name: sidecar
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
+```
+
+## Deployment with rolling update strategy
+
+```yaml
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.25
+```
+
+## StatefulSet volumeClaimTemplates
+
+```yaml
+spec:
+  serviceName: app
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      resources:
+        requests:
+          storage: 1Gi
+```
+
+## NetworkPolicy deny all ingress
+
+```yaml
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+```
+
+## Namespaced Role and RoleBinding
+
+```yaml
+kind: Role
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","list"]
+---
+kind: RoleBinding
+subjects:
+- kind: ServiceAccount
+  name: app-sa
+roleRef:
+  kind: Role
+  name: read-pods
+```
+
+# B9. EXAM HYGIENE / TIME SAVERS
 
 ## Create kubectl alias k
 
