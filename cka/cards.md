@@ -1,119 +1,193 @@
 # A1. kubectl CORE MECHANICS (HIGHEST ROI)
 
-## Create a single Pod named nginx using kubectl
-
-kubectl run nginx --image=nginx --restart=Never
-
-## Create a Deployment named web with image nginx
-
-kubectl create deploy web --image=nginx
-
-## Expose Deployment web on port 80 as ClusterIP
-
-kubectl expose deploy web --port=80 --target-port=80 --type=ClusterIP
-
-## Generate Deployment YAML without creating it
-
-kubectl create deploy web --image=nginx --dry-run=client -o yaml
-
-## Apply a manifest file
-
-kubectl apply -f file.yaml
-
-## Force replace a resource from file
-
-kubectl replace --force -f file.yaml
-
-## Immediately delete a Pod
-
-kubectl delete pod nginx --grace-period=0 --force
-
-## Edit a live resource
-
-kubectl edit deploy web
-
-## Export resource YAML to file
-
-kubectl get pod nginx -o yaml > pod.yaml
-
-## Get Pods in a namespace
-
-kubectl get pods -n kube-system
-
-## Get Pods across all namespaces
-
-kubectl get pods --all-namespaces
-
-## Select resources by label
-
-kubectl get pods -l app=web
-
-## Show wide output for Nodes
-
-kubectl get nodes -o wide
-
-## Extract Pod name using jsonpath
-
-kubectl get pods -o jsonpath='{.items[0].metadata.name}'
-
-## Filter Pods by node name
-
-kubectl get pods --field-selector spec.nodeName=node1
-
-## Scale a Deployment to 3 replicas
-
-kubectl scale deploy web --replicas=3
-
-## Watch rollout status of a Deployment
-
-kubectl rollout status deploy web
-
-## Roll back a Deployment
-
-kubectl rollout undo deploy web
-
-## Describe a Pod
-
-kubectl describe pod nginx
-
-## Show logs of a Pod
-
-kubectl logs nginx
-
-## Show logs from previous container instance
-
-kubectl logs -p nginx
-
-## Execute a shell in a Pod
-
-kubectl exec -it nginx -- sh
-
-## Check RBAC permission for an action
-
-kubectl auth can-i create pods
-
-## Impersonate a user for auth check
-
-kubectl auth can-i delete pods --as=user1
-
-## Impersonate user and group
-
-kubectl auth can-i get pods --as=user1 --as-group=devs
-# A2. WORKLOADS (PODS, DEPLOYMENTS, JOBS)
-
-## Create a single-container Pod with kubectl
-
+## Task: Create a single Pod named nginx quickly in default ns
+Tags: domain:workloads action:create format:kubectl
+Command:
 ```bash
-kubectl run nginx --image=nginx
+kubectl run nginx --image=nginx --restart=Never
 ```
 
-## Create a multi-container Pod (2 containers)
+Verify:
+```bash
+kubectl get pod nginx -o wide
+```
 
+Pitfalls:
+
+* Forgetting --restart=Never creates Deployment instead.
+* Pod may stay ContainerCreating if image pull issues.
+
+## Task: Create a Deployment and expose it via ClusterIP Service
+Tags: domain:workloads action:create format:kubectl
+Command:
+```bash
+kubectl create deploy web --image=nginx
+kubectl expose deploy web --port=80 --target-port=80 --type=ClusterIP
+```
+
+Verify:
+```bash
+kubectl get deploy web && kubectl get svc web -o wide
+```
+
+Pitfalls:
+
+* Service selector must match Deployment labels (app=web by default).
+* Expose uses first container port if targetPort omitted; set explicitly.
+
+## Task: Generate Deployment YAML without creating
+Tags: domain:workloads action:observe format:kubectl
+Command:
+```bash
+kubectl create deploy web --image=nginx --dry-run=client -o yaml
+```
+
+Verify:
+```bash
+kubectl create deploy web --image=nginx --dry-run=client -o yaml | head -n 5
+```
+
+Pitfalls:
+
+* --record deprecated; omit.
+* Remember to set selector when editing YAML manually.
+
+## Task: Apply/replace manifests fast
+Tags: domain:workloads action:apply format:kubectl
+Command:
+```bash
+kubectl apply -f file.yaml
+kubectl replace --force -f file.yaml   # deletes then creates
+```
+
+Verify:
+```bash
+kubectl get -f file.yaml
+```
+
+Pitfalls:
+
+* replace --force briefly deletes resource; avoid on critical Services.
+* apply caches last-applied; use kubectl diff before.
+
+## Task: Delete a Pod immediately
+Tags: domain:workloads action:delete format:kubectl
+Command:
+```bash
+kubectl delete pod nginx --grace-period=0 --force
+```
+
+Verify:
+```bash
+kubectl get pod nginx
+```
+
+Pitfalls:
+
+* Force delete may leave volumes mounted; check node for cleanup.
+* If finalizers present, patch to remove first.
+
+## Task: Inspect live resources and rollout
+Tags: domain:workloads action:observe format:kubectl
+Command:
+```bash
+kubectl describe pod nginx
+kubectl logs nginx
+kubectl logs nginx --previous
+kubectl rollout status deploy/web
+kubectl rollout undo deploy/web
+```
+
+Verify:
+```bash
+kubectl get rs -l app=web -o wide
+```
+
+Pitfalls:
+
+* Use --previous only when container restarted.
+* rollout status blocks until complete; ctrl+c if stuck.
+
+## Task: Exec into a Pod shell quickly
+Tags: domain:workloads action:debug format:kubectl
+Command:
+```bash
+kubectl exec -it nginx -- sh
+```
+
+Verify:
+```bash
+kubectl exec nginx -- echo ok
+```
+
+Pitfalls:
+
+* alpine uses /bin/sh; bash may not exist.
+* Ensure pod Running before exec.
+
+## Task: Label/annotate resources fast
+Tags: domain:workloads action:edit format:kubectl
+Command:
+```bash
+kubectl label pod nginx tier=frontend --overwrite
+kubectl annotate pod nginx owner=cka --overwrite
+```
+
+Verify:
+```bash
+kubectl get pod nginx --show-labels -o custom-columns=NAME:.metadata.name,ANN:.metadata.annotations.owner
+```
+
+Pitfalls:
+
+* Forgetting --overwrite fails on existing values.
+* Quotes required if annotation contains slashes.
+
+## Task: Use jsonpath with newline for first Pod name
+Tags: domain:workloads action:observe format:kubectl
+Command:
+```bash
+kubectl get pods -o jsonpath='{.items[0].metadata.name}{"\n"}'
+```
+
+Verify:
+```bash
+kubectl get pods -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'
+```
+
+Pitfalls:
+
+* Always add {"\n"} to avoid glued output.
+* Order is not deterministic without sort.
+
+# A2. WORKLOADS (PODS, DEPLOYMENTS, JOBS)
+
+## Task: Run a Pod with env vars and custom command
+Tags: domain:workloads action:create format:kubectl
+Command:
+```bash
+kubectl run envpod --image=busybox:1.36 --restart=Never \
+  --env=APP=prod --command -- sh -c 'echo $APP && sleep 3600'
+```
+
+Verify:
+```bash
+kubectl logs envpod | head -n 1
+```
+
+Pitfalls:
+
+* --command required when overriding entrypoint.
+* Use explicit image tag to avoid pull latency.
+
+## Task: Apply Pod with multi-container and probes (YAML)
+Tags: domain:workloads action:create format:yaml
+Manifest:
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: mc
+  name: mc-probe
 spec:
   containers:
   - name: app
@@ -124,1106 +198,973 @@ spec:
       httpGet:
         path: /
         port: 80
+      initialDelaySeconds: 5
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      periodSeconds: 5
   - name: sidecar
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
 ```
 
-## Set Pod restart policy Never
-
+Apply:
 ```bash
-kubectl run test --image=busybox --restart=Never -- echo ok
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mc-probe
+spec:
+  containers:
+  - name: app
+    image: nginx
+    ports:
+    - containerPort: 80
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      periodSeconds: 5
+  - name: sidecar
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+EOF
 ```
 
-## Set Pod restart policy OnFailure
-
+Verify:
 ```bash
-kubectl run jobpod --image=busybox --restart=OnFailure -- false
+kubectl get pod mc-probe -o wide
+kubectl describe pod mc-probe | sed -n '/Events:/,$p'
 ```
 
-## Override container command
+Pitfalls:
 
+* selector not needed for standalone Pod; avoid kubectl set probe (deprecated).
+* initialDelaySeconds prevents early restarts.
+
+## Task: Update Deployment image safely
+Tags: domain:workloads action:edit format:kubectl
+Command:
 ```bash
-kubectl run cmd --image=busybox --command -- sleep 3600
+kubectl set image deploy/web nginx=nginx:1.25
+kubectl rollout status deploy/web
 ```
 
-## Pass container args
-
+Verify:
 ```bash
-kubectl run args --image=busybox -- sleep 3600
+kubectl rollout history deploy/web
 ```
 
-## Set environment variable in Pod
+Pitfalls:
 
+* Ensure Deployment selector matches pod labels when editing YAML.
+* Watch for imagePullBackOff during rollout.
+
+## Task: Create a Job and view logs
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: pi
+        image: perl
+        command: ["perl","-Mbignum=bpi","-wle","print bpi(10)"]
+```
+
+Apply:
 ```bash
-kubectl run env --image=busybox --env=APP=prod -- sleep 3600
+kubectl apply -f - <<'EOF'
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pi
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: pi
+        image: perl
+        command: ["perl","-Mbignum=bpi","-wle","print bpi(10)"]
+EOF
 ```
 
-## Add liveness probe (http)
-
+Verify:
 ```bash
-kubectl set probe pod nginx --liveness --get-url=http://:80/
+kubectl get jobs pi -o wide
+kubectl logs job/pi
 ```
 
-## Add readiness probe (http)
+Pitfalls:
 
+* restartPolicy must be Never/OnFailure.
+* backoffLimit defaults to 6; adjust if needed.
+
+## Task: Create a CronJob (batch/v1) running every minute
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cj
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: date
+            image: busybox:1.36
+            command: ["sh","-c","date; sleep 10"]
+```
+
+Apply:
 ```bash
-kubectl set probe pod nginx --readiness --get-url=http://:80/
+kubectl apply -f - <<'EOF'
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cj
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: date
+            image: busybox:1.36
+            command: ["sh","-c","date; sleep 10"]
+EOF
 ```
 
-## Add startup probe (http)
-
+Verify:
 ```bash
-kubectl set probe pod nginx --startup --get-url=http://:80/
+kubectl get cronjob cj
+kubectl get jobs -l job-name -o wide
 ```
 
-## Create ConfigMap from literal
+Pitfalls:
 
-```bash
-kubectl create cm app-cm --from-literal=key=val
-```
-
-## Use ConfigMap as env in Pod
-
-```bash
-kubectl set env pod nginx --from=configmap/app-cm
-```
-
-## Mount ConfigMap as volume
-
-```bash
-kubectl set volume pod nginx --add --name=cm --type=configmap --configmap-name=app-cm --mount-path=/cm
-```
-
-## Create Secret from literal
-
-```bash
-kubectl create secret generic app-sec --from-literal=pwd=123
-```
-
-## Use Secret as env in Pod
-
-```bash
-kubectl set env pod nginx --from=secret/app-sec
-```
-
-## Mount Secret as volume
-
-```bash
-kubectl set volume pod nginx --add --name=sec --type=secret --secret-name=app-sec --mount-path=/sec
-```
-
-## Update Deployment image
-
-```bash
-kubectl set image deploy/nginx nginx=nginx:1.25
-```
-
-## Check Deployment rollout status
-
-```bash
-kubectl rollout status deploy/nginx
-```
-
-## Rollback Deployment
-
-```bash
-kubectl rollout undo deploy/nginx
-```
-
-## Create Job
-
-```bash
-kubectl create job pi --image=busybox -- echo ok
-```
-
-## Create CronJob
-
-```bash
-kubectl create cronjob cj --schedule="*/5 * * * *" --image=busybox -- echo ok
-```
-
-## Show non-running Pods (CrashLoopBackOff/Pending)
-
-```bash
-kubectl get pods --field-selector=status.phase!=Running
-```
-
-## Inspect Pod logs causing CrashLoopBackOff
-
-```bash
-kubectl logs podname --previous
-```
-
-## Show ImagePullBackOff Pods
-
-```bash
-kubectl get pods | grep ImagePullBackOff
-```
-
-## Describe Pod for image pull errors
-
-```bash
-kubectl describe pod podname
-```
+* Use batch/v1; older apiVersions are invalid.
+* Set startingDeadlineSeconds to avoid backlogged runs.
 
 # A2b. SCHEDULING & PLACEMENT ESSENTIALS
 
-## Schedule Pod to labeled node (nodeSelector)
-
+## Task: Schedule Pod to labeled node via nodeSelector
+Tags: domain:scheduling action:create format:yaml
+Manifest:
 ```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: selector-pod
 spec:
   nodeSelector:
     disktype: ssd
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
 ```
 
-## Allow Pod on tainted node (tolerations)
+Apply:
+```bash
+kubectl label node <node> disktype=ssd
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: selector-pod
+spec:
+  nodeSelector:
+    disktype: ssd
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+EOF
+```
 
+Verify:
+```bash
+kubectl get pod selector-pod -o wide
+```
+
+Pitfalls:
+
+* Pod Pending if label missing; add before create.
+* nodeSelector is exact match only.
+
+## Task: Use nodeAffinity requiredDuringScheduling
+Tags: domain:scheduling action:create format:yaml
+Manifest:
 ```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: affinity-pod
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: disktype
+            operator: In
+            values: [ssd]
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: affinity-pod
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: disktype
+            operator: In
+            values: [ssd]
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+EOF
+```
+
+Verify:
+```bash
+kubectl get pod affinity-pod -o wide
+kubectl describe pod affinity-pod | sed -n '/Events:/,$p'
+```
+
+Pitfalls:
+
+* Pending with FailedScheduling if no nodes match.
+* Use topologyKey for podAntiAffinity; not nodeAffinity.
+
+## Task: Allow Pod on tainted node with toleration
+Tags: domain:scheduling action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tolerate
 spec:
   tolerations:
-  - key: "dedicated"
-    operator: "Equal"
-    value: "gpu"
-    effect: "NoSchedule"
+  - key: key
+    operator: Equal
+    value: value
+    effect: NoSchedule
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
 ```
 
-## Assign PriorityClass to Pod
+Apply:
+```bash
+kubectl taint nodes <node> key=value:NoSchedule
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tolerate
+spec:
+  tolerations:
+  - key: key
+    operator: Equal
+    value: value
+    effect: NoSchedule
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+EOF
+```
 
+Verify:
+```bash
+kubectl get pod tolerate -o wide
+```
+
+Pitfalls:
+
+* Remove taint with kubectl taint nodes <node> key:NoSchedule- after test.
+* Effect must match taint; otherwise still blocked.
+
+## Task: Create PriorityClass and Pod using it
+Tags: domain:scheduling action:create format:yaml
+Manifest:
 ```yaml
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 100000
+preemptionPolicy: PreemptLowerPriority
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prio-pod
 spec:
   priorityClassName: high-priority
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
 ```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 100000
+preemptionPolicy: PreemptLowerPriority
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prio-pod
+spec:
+  priorityClassName: high-priority
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+EOF
+```
+
+Verify:
+```bash
+kubectl get pod prio-pod -o jsonpath='{.spec.priority}{"\n"}'
+```
+
+Pitfalls:
+
+* Preemption may evict lower priority pods; be careful in shared clusters.
+* Only one globalDefault PriorityClass allowed.
+
+## Task: Create PodDisruptionBudget for a Deployment
+Tags: domain:scheduling action:create format:yaml
+Manifest:
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: web
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: web
+EOF
+```
+
+Verify:
+```bash
+kubectl get pdb web-pdb
+kubectl describe pdb web-pdb
+```
+
+Pitfalls:
+
+* Ensure Deployment has enough replicas to satisfy minAvailable.
+* PDBs block voluntary evictions only (drain/evict), not pod failures.
 
 # A3. NETWORKING (CORE ONLY)
-## Create ClusterIP Service
 
+## Task: Expose Deployment via NodePort and verify endpoint
+Tags: domain:net action:create format:kubectl
+Command:
 ```bash
-kubectl expose pod nginx --port=80 --type=ClusterIP
+kubectl expose deploy web --type=NodePort --port=80 --target-port=80 --name=web-nodeport
 ```
 
-## Create NodePort Service
-
+Verify:
 ```bash
-kubectl expose pod nginx --port=80 --type=NodePort
+kubectl get svc web-nodeport -o wide
+kubectl get endpoints web-nodeport -o wide
 ```
 
-## Set Service selector
+Pitfalls:
 
+* NodePorts default 30000-32767; specify --node-port to avoid collisions.
+* Pods must be Ready to appear in endpoints.
+
+## Task: Create LoadBalancer Service (generic) and watch external IP
+Tags: domain:net action:create format:kubectl
+Command:
 ```bash
-kubectl patch svc nginx -p '{"spec":{"selector":{"app":"nginx"}}}'
+kubectl expose deploy web --type=LoadBalancer --port=80 --target-port=80 --name=web-lb
+kubectl get svc web-lb -w
 ```
 
-## Check Service endpoints
-
+Verify:
 ```bash
-kubectl get endpoints nginx
+kubectl get svc web-lb -o jsonpath='{.status.loadBalancer.ingress[*].ip}{"\n"}'
 ```
 
-## Detect endpoint mismatch
+Pitfalls:
 
-```bash
-kubectl describe svc nginx
-```
+* On bare metal, External IP may stay <pending>; use nodePort fallback.
+* healthCheckNodePort may be required by some providers.
 
-## DNS lookup inside cluster
-
-```bash
-kubectl exec pod -- nslookup svcname
-```
-
-## DNS lookup with dig
-
-```bash
-kubectl exec pod -- dig svcname
-```
-
-## Create basic Ingress (host → service)
-
-```bash
-kubectl create ingress ing --rule=host/path=svc:80
-```
-
-## Create default deny NetworkPolicy
-
+## Task: Create Ingress routing host/path to Service
+Tags: domain:net action:create format:yaml
+Manifest:
 ```yaml
 apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+kind: Ingress
 metadata:
-  name: deny-all
+  name: web-ing
 spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 80
 ```
 
-## Allow traffic from namespace selector
-
-```yaml
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
 apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+kind: Ingress
 metadata:
-  name: allow-ns
+  name: web-ing
 spec:
-  podSelector:
-    matchLabels:
-      app: nginx
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: team
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 80
+EOF
 ```
 
-## Allow traffic from pod selector
+Verify:
+```bash
+kubectl get ingress web-ing
+kubectl describe ingress web-ing | sed -n '/Rules:/,$p'
+```
 
+Pitfalls:
+
+* Requires ingress controller; check events for class errors.
+* pathType is mandatory (Prefix/Exact).
+
+## Task: Check Service endpoints and fix selector mismatch
+Tags: domain:net action:fix format:kubectl
+Fast triage:
+```bash
+kubectl get svc web -o wide
+kubectl get endpoints web -o wide
+kubectl get pods -l app=web -o wide
+```
+
+Common causes → fix:
+
+* Cause: selector wrong → Fix:
+  ```bash
+  kubectl patch svc web -p '{"spec":{"selector":{"app":"web"}}}'
+  ```
+  Verify:
+  ```bash
+  kubectl get endpoints web -o wide
+  ```
+* Cause: pods not Ready → Fix: inspect describe/events/logs for readiness.
+
+Pitfalls:
+
+* Exposing Pod without labels yields empty endpoints.
+* targetPort must match containerPort or named port.
+
+## Task: Debug in-cluster DNS quickly
+Tags: domain:net action:debug format:kubectl
+Fast triage:
+```bash
+kubectl run -n default -it --rm dnscheck --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
+kubectl get pods -n kube-system -l k8s-app=kube-dns
+kubectl logs -n kube-system -l k8s-app=kube-dns --tail=20
+```
+
+Common causes → fix:
+
+* Cause: CoreDNS CrashLoop → Fix: describe/logs, check ConfigMap kube-dns.
+  Verify:
+  ```bash
+  kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
+  ```
+* Cause: NetworkPolicy blocking DNS → Fix: allow udp/53 to kube-dns.
+
+Pitfalls:
+
+* metrics-server outages do not affect DNS; avoid misdiagnosis.
+* BusyBox dig may be missing; use nslookup.
+
+# A4. STORAGE (CORE)
+
+## Task: Create PVC with specific StorageClass via YAML
+Tags: domain:storage action:create format:yaml
+Manifest:
 ```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
-  name: allow-pod
+  name: data-claim
 spec:
-  podSelector:
-    matchLabels:
-      app: nginx
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          role: client
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
 ```
 
-# A4. STORAGE (CORVE)
-
-## Create a PersistentVolumeClaim (PVC) with size and access mode
-
+Apply:
 ```bash
-kubectl create pvc mypvc --storage=1Gi --access-modes=ReadWriteOnce
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-claim
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
+EOF
 ```
 
-## Create a PVC using a specific StorageClass
-
+Verify:
 ```bash
-kubectl create pvc mypvc --storage=1Gi --access-modes=ReadWriteOnce --storage-class=fast
+kubectl describe pvc data-claim
 ```
 
-## Create a PVC with ReadWriteMany access mode
+Pitfalls:
 
+* Avoid kubectl create pvc shortcuts; YAML ensures SC/accessModes set.
+* Pending indicates missing PV or provisioner.
+
+## Task: Create PVC ReadWriteMany
+Tags: domain:storage action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-claim
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+Apply:
 ```bash
-kubectl create pvc mypvc --storage=1Gi --access-modes=ReadWriteMany
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-claim
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 1Gi
+EOF
 ```
 
-## Mount an existing PVC into a Pod
-
+Verify:
 ```bash
-kubectl run mypod --image=nginx --restart=Never --overrides='{"spec":{"volumes":[{"name":"v","persistentVolumeClaim":{"claimName":"mypvc"}}],"containers":[{"name":"nginx","image":"nginx","volumeMounts":[{"name":"v","mountPath":"/data"}]}]}}'
+kubectl get pvc shared-claim -o wide
 ```
 
-## Create a PersistentVolume with Retain reclaim policy
+Pitfalls:
 
+* Many provisioners do not support RWX; expect Pending on unsupported storage.
+* Specify storageClassName if default lacks RWX.
+
+## Task: Mount PVC into Pod and verify IO
+Tags: domain:storage action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-pod
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","echo ok > /data/test && cat /data/test && sleep 3600"]
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: data-claim
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-pod
+spec:
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","echo ok > /data/test && cat /data/test && sleep 3600"]
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: data-claim
+EOF
+```
+
+Verify:
+```bash
+kubectl logs pvc-pod | head -n 1
+```
+
+Pitfalls:
+
+* Pod and PVC must be in same namespace.
+* Pending PVC keeps pod Pending; describe pod events.
+
+## Task: Create PV with Retain reclaim policy
+Tags: domain:storage action:create format:yaml
+Manifest:
 ```yaml
 apiVersion: v1
 kind: PersistentVolume
+metadata:
+  name: pv-retain
 spec:
   capacity:
     storage: 1Gi
-  accessModes: [ReadWriteOnce]
+  accessModes: ["ReadWriteOnce"]
   persistentVolumeReclaimPolicy: Retain
   hostPath:
-    path: /data/pv
+    path: /mnt/pv-retain
 ```
 
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-retain
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/pv-retain
+EOF
+```
+
+Verify:
+```bash
+kubectl get pv pv-retain -o wide
+```
+
+Pitfalls:
+
+* hostPath PVs bind to specific node; pods must schedule there.
+* Recycle is deprecated; use Retain/Delete only.
+
+## Task: Resize PVC (if StorageClass allows expansion)
+Tags: domain:storage action:edit format:kubectl
+Command:
+```bash
+kubectl patch pvc data-claim -p '{"spec":{"resources":{"requests":{"storage":"2Gi"}}}}'
+```
+
+Verify:
+```bash
+kubectl get pvc data-claim
+```
+
+Pitfalls:
+
+* StorageClass must set allowVolumeExpansion: true.
+* Filesystem expansion may require pod restart depending on driver.
+
+## Task: Identify default StorageClass and provisioner
+Tags: domain:storage action:observe format:kubectl
+Command:
+```bash
+kubectl get sc
+kubectl get sc -o jsonpath='{range .items[*]}{.metadata.name}{":"}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{"\n"}{end}'
+```
+
+Verify:
+```bash
+kubectl describe sc <sc-name>
+```
+
+Pitfalls:
+
+* Only one default should be true; unset others if duplicates.
+* Provisioner name hints CSI driver to inspect.
+
+## Task: Debug PVC Pending (dynamic provisioning)
+Tags: domain:storage action:debug format:kubectl
+Fast triage:
+```bash
+kubectl describe pvc <pvc>
+kubectl get events --field-selector involvedObject.name=<pvc> --sort-by=.lastTimestamp
+kubectl get pods -A | grep csi
+```
+
+Common causes → fix:
+
+* Cause: no default SC → Fix: set annotation on SC or specify storageClassName.
+  Verify:
+  ```bash
+  kubectl patch storageclass <sc> -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  ```
+* Cause: driver pods down → Fix: restart CSI controller/daemonset.
+
+Pitfalls:
+
+* Namespace mismatch between pod and PVC leads to Pending pod not PVC.
+* ReadWriteMany request on RWO-only provisioner stays Pending.
+
+## Task: CSI troubleshooting basics
+Tags: domain:storage action:debug format:kubectl
+Fast triage:
+```bash
+kubectl get csidrivers,csinodes,volumeattachments
+kubectl get pods -A | grep -E 'csi|storage'
+kubectl describe pvc <pvc>
+```
+
+Common causes → fix:
+
+* Cause: node plugin down → Fix: check DaemonSet pods in kube-system; restart node plugin pod.
+  Verify:
+  ```bash
+  kubectl get pods -A | grep csi-node
+  ```
+* Cause: attach timeout → Fix: inspect volumeattachment events.
+
+Pitfalls:
+
+* VolumeAttachments require RBAC; run as admin.
+* Some drivers log to kubelet; check journal if events sparse.
 
 # A5. CLUSTER ADMIN (ABSOLUTE MUST)
 
-## List all nodes in the cluster
-
+## Task: Cordon, drain, uncordon a node safely
+Tags: domain:cluster-arch action:edit format:kubectl
+Command:
 ```bash
-kubectl get nodes
+kubectl cordon <node>
+kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
+kubectl uncordon <node>
 ```
 
-## Describe a node
-
+Verify:
 ```bash
-kubectl describe node <node-name>
+kubectl get nodes -o wide
 ```
 
-## Cordon a node
+Pitfalls:
 
+* PDBs can block drain; use --disable-eviction only if necessary.
+* Remove taints before expecting pods to reschedule there.
+
+## Task: Take etcd snapshot and validate
+Tags: domain:cluster-arch action:create format:node-shell
+Command:
 ```bash
-kubectl cordon <node-name>
+ETCDCTL_API=3 etcdctl snapshot save /var/lib/etcd/snapshot.db \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key
 ```
 
-## Drain a node safely for maintenance
-
+Verify:
 ```bash
-kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+ETCDCTL_API=3 etcdctl snapshot status /var/lib/etcd/snapshot.db
 ```
 
-## Uncordon a node
+Pitfalls:
 
+* Run on control-plane hosting etcd static pod.
+* Ensure file permissions allow kube-apiserver to read after restore.
+
+## Task: Restore etcd snapshot and rewire static pod
+Tags: domain:cluster-arch action:fix format:node-shell
+Fast triage:
 ```bash
-kubectl uncordon <node-name>
+ETCDCTL_API=3 etcdctl snapshot restore /var/lib/etcd/snapshot.db --data-dir=/var/lib/etcd-restore
 ```
 
-## Static Pod manifest location on node
+Common causes → fix:
 
-```bash
-ls /etc/kubernetes/manifests
-```
+* Cause: static pod still points to old dir → Fix: edit /etc/kubernetes/manifests/etcd.yaml volume hostPath and --data-dir to /var/lib/etcd-restore.
+  Verify:
+  ```bash
+  kubectl get pods -n kube-system -w | grep etcd
+  ```
 
-## Detect static pods running on a node
+Pitfalls:
 
-```bash
-kubectl get pods -n kube-system -o wide | grep <node-name>
-```
+* Remove old member data-dir if conflicts.
+* Kubelet auto-restarts static pod after manifest edit.
 
-## Kubelet configuration file location
-
-```bash
-ls /var/lib/kubelet/config.yaml
-```
-
-## View kubelet logs
-
-```bash
-journalctl -u kubelet
-```
-
-## Take an etcd snapshot
-
-```bash
-ETCDCTL_API=3 etcdctl snapshot save snapshot.db \
---endpoints=https://127.0.0.1:2379 \
---cacert=/etc/kubernetes/pki/etcd/ca.crt \
---cert=/etc/kubernetes/pki/etcd/server.crt \
---key=/etc/kubernetes/pki/etcd/server.key
-```
-
-## Restore etcd snapshot and rewire static pod
-
-```bash
-ETCDCTL_API=3 etcdctl snapshot restore snapshot.db --data-dir=/var/lib/etcd-from-backup
-```
-
-Edit `/etc/kubernetes/manifests/etcd.yaml` volume hostPath and `--data-dir` to `/var/lib/etcd-from-backup`, then restart kubelet to reload the static pod.
-
-## Initialize control plane with kubeadm
-
+## Task: Initialize control plane with kubeadm and set kubeconfig
+Tags: domain:cluster-arch action:create format:node-shell
+Command:
 ```bash
 kubeadm init --pod-network-cidr=192.168.0.0/16
-```
-
-Verify nodes and apply CNI after init.
-
-## Configure kubeconfig for root after init
-
-```bash
 mkdir -p $HOME/.kube
 cp /etc/kubernetes/admin.conf $HOME/.kube/config
 chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-## Join a worker node with kubeadm
+Verify:
+```bash
+kubectl get nodes
+```
 
+Pitfalls:
+
+* Apply CNI manifest after init; nodes stay NotReady until then.
+* For root, $HOME may be /root; adjust paths for other users.
+
+## Task: Join worker node with kubeadm
+Tags: domain:cluster-arch action:create format:node-shell
+Command:
 ```bash
 kubeadm join <cp-ip>:6443 --token <token> \
---discovery-token-ca-cert-hash sha256:<hash>
+  --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
-Regenerate with `kubeadm token create --print-join-command` if needed.
+Verify:
+```bash
+kubectl get nodes -o wide
+```
 
-## Upgrade control plane with kubeadm
+Pitfalls:
 
+* Token expires; regenerate with kubeadm token create --print-join-command.
+* Ensure required ports open (6443, 10250).
+
+## Task: Upgrade control plane then kubelet/kubectl
+Tags: domain:cluster-arch action:edit format:node-shell
+Command:
 ```bash
 kubeadm upgrade plan
-kubeadm upgrade apply v1.28.x
-```
-
-Upgrade control plane first, then workers.
-
-## Upgrade kubelet and kubectl on a node
-
-```bash
-apt-get install -y kubelet=1.28.x kubectl=1.28.x
+kubeadm upgrade apply v1.X.Y
+apt-get install -y kubelet=1.X.Y-00 kubectl=1.X.Y-00
 systemctl restart kubelet
 ```
 
-Verify node version skew stays within ±1 minor.
+Verify:
+```bash
+kubectl get nodes -o wide
+```
 
-## Renew control plane certificates
+Pitfalls:
 
+* Upgrade control plane first; respect version skew (kubelet <= apiserver <= kubeadm).
+* Drain nodes before upgrading kubelet when possible.
+
+## Task: Renew control-plane certs
+Tags: domain:cluster-arch action:fix format:node-shell
+Command:
 ```bash
 kubeadm cert renew all
 systemctl restart kubelet
 ```
 
-## Create a new bootstrap token
-
-```bash
-kubeadm token create --print-join-command
-```
-
-# A6. RBAC (CORE)
-## Role (namespaced) create
-
-```sh
-kubectl create role <role> --verb=get,list,watch --resource=pods -n <ns>
-```
-
-## ClusterRole create
-
-```sh
-kubectl create clusterrole <clusterrole> --verb=get,list,watch --resource=pods
-```
-
-## RoleBinding bind Role to ServiceAccount
-
-```sh
-kubectl create rolebinding <rb> --role=<role> --serviceaccount=<ns>:<sa> -n <ns>
-```
-
-## ClusterRoleBinding bind ClusterRole to ServiceAccount
-
-```sh
-kubectl create clusterrolebinding <crb> --clusterrole=<clusterrole> --serviceaccount=<ns>:<sa>
-```
-
-## `kubectl auth can-i` as ServiceAccount in namespace
-
-```sh
-kubectl auth can-i <verb> <resource> --as=system:serviceaccount:<ns>:<sa> -n <ns>
-```
----
-
-# A7. CORE TROUBLESHOOTING
-## Pod won’t start: see events quickly
-
-```sh
-kubectl describe pod <pod> -n <ns>
-```
-
-## Pod crash looping: show last termination logs
-
-```sh
-kubectl logs <pod> -n <ns> --previous
-```
-
-## Pod crash looping: show current logs
-
-```sh
-kubectl logs <pod> -n <ns>
-```
-
-## Pod won’t start: show container statuses (wide)
-
-```sh
-kubectl get pod <pod> -n <ns> -o wide
-```
-
-## Node NotReady: describe node for reason/events
-
-```sh
-kubectl describe node <node>
-```
-
-## Node NotReady: list nodes with status
-
-```sh
-kubectl get nodes -o wide
-```
-
-## Service unreachable: list endpoints for service
-
-```sh
-kubectl get endpoints <svc> -n <ns>
-```
-
-## Service unreachable: verify service selector/ports fast
-
-```sh
-kubectl get svc <svc> -n <ns> -o wide
-```
-
-## Service unreachable: verify matching pods by selector
-
-```sh
-kubectl get pods -n <ns> -l <key>=<val> -o wide
-```
-
-## DNS failure: test DNS from a temp busybox pod
-
-```sh
-kubectl run -n <ns> dns --rm -it --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
-```
-
-## DNS failure: check CoreDNS pods
-
-```sh
-kubectl get pods -n kube-system -l k8s-app=kube-dns
-```
-
-## DNS failure: view CoreDNS logs
-
-```sh
-kubectl logs -n kube-system -l k8s-app=kube-dns
-```
-
-## Volume mount failure: show pod events (mount errors)
-
-```sh
-kubectl describe pod <pod> -n <ns> | sed -n '/Events:/,$p'
-```
-
-# B1. ADVANCED kubectl SPEED
-
-## Patch a Deployment image (strategic merge)
-
-```bash
-kubectl patch deploy <deploy> -p '{"spec":{"template":{"spec":{"containers":[{"name":"<c>","image":"<img>:<tag>"}]}}}}'
-```
-
-## Patch a Service type to NodePort
-
-```bash
-kubectl patch svc <svc> -p '{"spec":{"type":"NodePort"}}'
-```
-
-## Patch using JSON merge patch type explicitly
-
-```bash
-kubectl patch deploy <deploy> --type=merge -p '{"spec":{"replicas":<n>}}'
-```
-
-## Patch using JSON patch (RFC6902) to replace replicas
-
-```bash
-kubectl patch deploy <deploy> --type=json -p='[{"op":"replace","path":"/spec/replicas","value":<n>}]'
-```
-
-## Add a label to a Pod
-
-```bash
-kubectl label pod <pod> <k>=<v>
-```
-
-## Overwrite an existing label on a Pod
-
-```bash
-kubectl label pod <pod> <k>=<v> --overwrite
-```
-
-## Remove a label from a Pod
-
-```bash
-kubectl label pod <pod> <k>-
-```
-
-## Add an annotation to a Pod
-
-```bash
-kubectl annotate pod <pod> <k>=<v>
-```
-
-## Overwrite an existing annotation on a Pod
-
-```bash
-kubectl annotate pod <pod> <k>=<v> --overwrite
-```
-
-## Remove an annotation from a Pod
-
-```bash
-kubectl annotate pod <pod> <k>-
-```
-
-## Update a container image in a Deployment
-
-```bash
-kubectl set image deploy/<deploy> <c>=<img>:<tag>
-```
-
-## Update all container images in a Deployment by wildcard
-
-```bash
-kubectl set image deploy/<deploy> '*=<img>:<tag>'
-```
-
-## Set an env var on a Deployment
-
-```bash
-kubectl set env deploy/<deploy> <k>=<v>
-```
-
-## Remove an env var from a Deployment
-
-```bash
-kubectl set env deploy/<deploy> <k>-
-```
-
-## Sort events by creation time
-
-```bash
-kubectl get events --sort-by=.metadata.creationTimestamp
-```
-
-## Show only Warning events sorted by time
-
-```bash
-kubectl get events --field-selector type=Warning --sort-by=.metadata.creationTimestamp
-```
-
-# B2. ADVANCED WORKLOAD DETAILS
-
-## List init containers for a Pod
-
-```bash
-kubectl get pod <pod> -o jsonpath='{.spec.initContainers[*].name}{"\n"}'
-```
-
-## Show init container termination reasons
-
-```bash
-kubectl get pod <pod> -o jsonpath='{range .status.initContainerStatuses[*]}{.name}{"="}{.state.terminated.reason}{"\n"}{end}'
-```
-
-## Get logs from a specific container in a Pod (sidecar)
-
-```bash
-kubectl logs <pod> -c <sidecar>
-```
-
-## Tail sidecar logs
-
-```bash
-kubectl logs <pod> -c <sidecar> --tail=50
-```
-
-## Follow sidecar logs
-
-```bash
-kubectl logs <pod> -c <sidecar> -f
-```
-
-## Show resource requests for all containers in a Pod
-
-```bash
-kubectl get pod <pod> -o jsonpath='{range .spec.containers[*]}{.name}{" req="}{.resources.requests}{"\n"}{end}'
-```
-
-## Show resource limits for all containers in a Pod
-
-```bash
-kubectl get pod <pod> -o jsonpath='{range .spec.containers[*]}{.name}{" lim="}{.resources.limits}{"\n"}{end}'
-```
-
-## Check if a Pod was OOMKilled
-
-```bash
-kubectl get pod <pod> -o jsonpath='{range .status.containerStatuses[*]}{.name}{"="}{.lastState.terminated.reason}{"\n"}{end}'
-```
-
-## Show last terminated exit codes (OOM often 137)
-
-```bash
-kubectl get pod <pod> -o jsonpath='{range .status.containerStatuses[*]}{.name}{"="}{.lastState.terminated.exitCode}{"\n"}{end}'
-```
-
-## List PodDisruptionBudgets
-
-```bash
-kubectl get pdb
-```
-
-## Describe a PodDisruptionBudget
-
-```bash
-kubectl describe pdb <pdb>
-```
-
-# B3. NETWORKING (EDGE)
-
-## Create a headless Service
-
-```bash
-kubectl create svc clusterip <svc> --tcp=80:80 --clusterip=None
-```
-
-## Create a multi-port Service (two TCP ports)
-
-```bash
-kubectl create svc clusterip <svc> --tcp=80:8080,443:8443
-```
-
-## Create an Ingress with a path rule (Prefix)
-
-```bash
-kubectl create ingress <ing> --rule="<host>/<path>=<svc>:<port>"
-```
-
-## Create an Ingress with a default backend
-
-```bash
-kubectl create ingress <ing> --default-backend=<svc>:<port>
-```
-
-## Apply a default-deny egress NetworkPolicy for a namespace
-
+Verify:
 ```bash
-kubectl create networkpolicy default-deny-egress --pod-selector={} --policy-types=Egress
+kubectl get nodes && kubectl get pods -n kube-system
 ```
 
-## Allow egress DNS (UDP/53) to kube-dns in kube-system
+Pitfalls:
 
-```bash
-kubectl create networkpolicy allow-dns-egress --pod-selector={} --policy-types=Egress --egress-to-namespace-selector='kubernetes.io/metadata.name=kube-system' --egress-to-pod-selector='k8s-app=kube-dns' --egress-port=udp:53
-```
-
-# B4. STORAGE (EDGE)
-
-## List emptyDir volume type in a Pod
-
-```bash
-kubectl explain pod.spec.volumes.emptyDir
-```
-
-## List hostPath volume type in a Pod
-
-```bash
-kubectl explain pod.spec.volumes.hostPath
-```
-
-## Resize an existing PVC
-
-```bash
-kubectl patch pvc mypvc -p '{"spec":{"resources":{"requests":{"storage":"2Gi"}}}}'
-```
-
-## Check if a PVC resize was applied
-
-```bash
-kubectl get pvc mypvc
-```
-
-## Identify StatefulSet volumeClaimTemplates
-
-```bash
-kubectl get sts mysts -o jsonpath='{.spec.volumeClaimTemplates[*].metadata.name}'
-```
-
----
-
-# B5. CLUSTER ADMIN (EDGE)
-
-## Locate control plane static Pod manifests
-
-```bash
-ls /etc/kubernetes/manifests
-```
-
-## View kube-apiserver flags
-
-```bash
-cat /etc/kubernetes/manifests/kube-apiserver.yaml
-```
-
-## Locate kube-scheduler manifest
-
-```bash
-ls /etc/kubernetes/manifests | grep scheduler
-```
-
-## Locate kube-controller-manager manifest
-
-```bash
-ls /etc/kubernetes/manifests | grep controller
-```
-
-## Recall cluster upgrade order
-
-Control plane → worker nodes
-
-## Locate Kubernetes certificates directory
-
-```bash
-ls /etc/kubernetes/pki
-```
-
-## List containers using crictl
-
-```bash
-crictl ps
-```
-
-## View container logs with crictl
-
-```bash
-crictl logs <container-id>
-```
-
----
-
-# B6. RBAC (EDGE)
-
-## Identify aggregated ClusterRoles
-
-```bash
-kubectl get clusterrole -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.aggregationRule}{"\n"}{end}'
-```
-
-## Create RoleBinding with multiple subjects
-
-```bash
-kubectl create rolebinding rb --role=role1 --user=u1 --user=u2
-```
-
-## Check permissions causing Forbidden error
-
-```bash
-kubectl auth can-i <verb> <resource> --as <user>
-```
-
-## Check permissions in a namespace
-
-```bash
-kubectl auth can-i <verb> <resource> -n <ns>
-```
-
-# B7. ADVANCED TROUBLESHOOTING
-
-## Identify why a pod is Pending (scheduler reason)
-
-```bash
-kubectl describe pod <pod> | grep -A5 Events
-```
-
-## Check if a pod is Pending due to insufficient resources
-
-```bash
-kubectl describe pod <pod> | grep -i insufficient
-```
-
-## List nodes with allocatable resources
-
-```bash
-kubectl describe nodes | grep -A5 Allocatable
-```
-
-## Verify imagePullSecret exists in namespace
-
-```bash
-kubectl get secret <secret> -n <ns>
-```
-
-## Confirm pod is using an imagePullSecret
-
-```bash
-kubectl get pod <pod> -o jsonpath='{.spec.imagePullSecrets}'
-```
-
-## Check image pull error on a pod
-
-```bash
-kubectl describe pod <pod> | grep -i image
-```
-
-## List NetworkPolicies in a namespace
-
-```bash
-kubectl get netpol -n <ns>
-```
-
-## Check if pod traffic is blocked by NetworkPolicy (events)
-
-```bash
-kubectl describe pod <pod> | grep -i policy
-```
-
-## Identify CNI issue via pod sandbox error
-
-```bash
-kubectl describe pod <pod> | grep -i cni
-```
-
-## Detect CNI failure via node status
-
-```bash
-kubectl describe node <node> | grep -i network
-```
-
-## Identify kube-proxy issue via service not routing
-
-```bash
-kubectl get pods -n kube-system | grep kube-proxy
-```
-
-## Check kube-proxy pod logs
-
-```bash
-kubectl logs -n kube-system <kube-proxy-pod>
-```
-
-# B8. YAML SKELETONS (MEMORIZE)
-
-## Pod with probes (multi-container ready)
-
-```yaml
-apiVersion: v1
-kind: Pod
-spec:
-  containers:
-  - name: app
-    image: nginx
-    ports:
-    - containerPort: 80
-    livenessProbe:
-      httpGet:
-        path: /
-        port: 80
-  - name: sidecar
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
-```
-
-## Deployment with rolling update strategy
-
-```yaml
-spec:
-  replicas: 3
-  strategy:
-    type: RollingUpdate
-  template:
-    spec:
-      containers:
-      - name: app
-        image: nginx:1.25
-```
-
-## StatefulSet volumeClaimTemplates
-
-```yaml
-spec:
-  serviceName: app
-  volumeClaimTemplates:
-  - metadata:
-      name: data
-    spec:
-      accessModes: [ReadWriteOnce]
-      resources:
-        requests:
-          storage: 1Gi
-```
-
-## NetworkPolicy deny all ingress
-
-```yaml
-spec:
-  podSelector: {}
-  policyTypes:
-  - Ingress
-```
-
-## Namespaced Role and RoleBinding
-
-```yaml
-kind: Role
-rules:
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get","list"]
----
-kind: RoleBinding
-subjects:
-- kind: ServiceAccount
-  name: app-sa
-roleRef:
-  kind: Role
-  name: read-pods
-```
-
-# B9. EXAM HYGIENE / TIME SAVERS
-
-## Create kubectl alias k
-
-```bash
-alias k=kubectl
-```
-
-## Enable kubectl bash autocompletion
-
-```bash
-source <(kubectl completion bash)
-```
-
-## vim search and replace in file
-
-```vim
-:%s/old/new/g
-```
-
-## vim visual block select
-
-```vim
-Ctrl+v
-```
-
-## vim indent selected lines right
-
-```vim
->
-```
-
-## vim indent selected lines left
-
-```vim
-<
-```
-
-## tmux split pane vertically
-
-```bash
-Ctrl+b %
-```
-
-## tmux split pane horizontally
-
-```bash
-Ctrl+b "
-```
-
-## Validate YAML before apply (dry-run)
-
-```bash
-kubectl apply -f file.yaml --dry-run=client
-```
-
-## Validate YAML with explain
-
-```bash
-kubectl explain pod.spec.containers
-```
-
-## Avoid namespace mistake by setting default
-
-```bash
-kubectl config set-context --current --namespace=<ns>
-```
-
-## Common flag fix: correct output flag
-
-```bash
-kubectl get pods -o wide
-```
-
-## Common flag fix: correct namespace flag
-
-```bash
-kubectl get pods -n <ns>
-```
+* Backup /etc/kubernetes/pki before renewal in real clusters.
+* Restart apiserver may briefly disrupt kubectl.
 
-## Task: Generate a kubeadm join command for adding a new worker node.
-in code snippets:  
-Command or YAML:
+## Task: Generate kubeadm join command (bootstrap token)
+Tags: domain:cluster-arch action:create format:node-shell
+Command:
 ```bash
 kubeadm token create --print-join-command
 ```
@@ -1233,135 +1174,18 @@ Verify:
 kubeadm token list
 ```
 
-Tip:
-Use --ttl 0 for a non-expiring token during the exam.
+Pitfalls:
 
-## Task: Create a new kubeadm bootstrap token and join a node using it.
-in code snippets:  
-Command or YAML:
+* Use --ttl 0 for non-expiring token when allowed.
+* Hash from /etc/kubernetes/pki/ca.crt via openssl x509 -pubkey ... if missing.
+
+## Task: Configure kubectl for non-root user
+Tags: domain:cluster-arch action:fix format:node-shell
+Command:
 ```bash
-kubeadm token create --print-join-command > /tmp/join.sh && sh /tmp/join.sh
-```
-
-Verify:
-```bash
-kubectl get nodes -o wide | grep <new-node-name>
-```
-
-Tip:
-Run join as root on the target node after copying the command.
-
-## Task: Upload control-plane certificates for adding an additional control-plane node (kubeadm).
-in code snippets:  
-Command or YAML:
-```bash
-kubeadm init phase upload-certs --upload-certs
-```
-
-Verify:
-```bash
-kubeadm token list | grep certs
-```
-
-Tip:
-Capture the certificate key output for the join command.
-
-## Task: Join a second control-plane node to an existing cluster using kubeadm.
-in code snippets:  
-Command or YAML:
-```bash
-kubeadm join <api-server>:6443 --control-plane --token <token> --discovery-token-ca-cert-hash sha256:<hash> --certificate-key <cert-key>
-```
-
-Verify:
-```bash
-kubectl get nodes -o wide
-```
-
-Tip:
-Ensure ports 6443/10250 reachable from new control-plane node.
-
-## Task: Reset a node that was previously joined and re-join it cleanly (kubeadm reset workflow).
-in code snippets:  
-Command or YAML:
-```bash
-sudo kubeadm reset -f && sudo rm -rf /etc/cni/net.d && sudo systemctl restart kubelet && sudo kubeadm join <api-server>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
-```
-
-Verify:
-```bash
-kubectl get nodes -o wide | grep <node>
-```
-
-Tip:
-Delete stale CNI state (/var/lib/cni) if kubelet fails to start.
-
-## Task: Find where control plane static pod manifests live and identify which node they run on.
-in code snippets:  
-Command or YAML:
-```bash
-grep staticPodPath /var/lib/kubelet/config.yaml
-```
-
-Verify:
-```bash
-kubectl get pods -n kube-system -o wide | grep -E 'kube-apiserver|kube-scheduler|kube-controller-manager|etcd'
-```
-
-Tip:
-staticPodPath default is /etc/kubernetes/manifests on control-plane nodes.
-
-## Task: Edit a static pod manifest (kube-apiserver/scheduler/controller-manager/etcd) and confirm it restarts.
-in code snippets:  
-Command or YAML:
-```bash
-sudo vi /etc/kubernetes/manifests/kube-apiserver.yaml
-```
-
-Verify:
-```bash
-kubectl get pods -n kube-system -w | grep kube-apiserver
-```
-
-Tip:
-Save file and wait; kubelet auto-recreates the static pod.
-
-## Task: Find kubelet’s config file and change one safe setting (e.g., clusterDNS/clusterDomain) then verify.
-in code snippets:  
-Command or YAML:
-```bash
-sudo sed -i 's/clusterDomain: .*/clusterDomain: cluster.local/' /var/lib/kubelet/config.yaml
-sudo systemctl restart kubelet
-```
-
-Verify:
-```bash
-sudo systemctl status kubelet --no-pager
-```
-
-Tip:
-Check systemd drop-ins for kubelet.service to confirm KUBELET_CONFIG_ARGS path.
-
-## Task: Identify the container runtime used by kubelet and verify it’s running on a node.
-in code snippets:  
-Command or YAML:
-```bash
-grep containerRuntimeEndpoint /var/lib/kubelet/config.yaml
-```
-
-Verify:
-```bash
-sudo systemctl status containerd || sudo systemctl status crio
-```
-
-Tip:
-Use crictl info if runtime endpoint is unclear.
-
-## Task: Configure kubectl access for a non-root user using admin.conf (copy/permissions).
-in code snippets:  
-Command or YAML:
-```bash
-sudo mkdir -p /home/user/.kube && sudo cp /etc/kubernetes/admin.conf /home/user/.kube/config && sudo chown user:user /home/user/.kube/config
+sudo mkdir -p /home/user/.kube
+sudo cp /etc/kubernetes/admin.conf /home/user/.kube/config
+sudo chown user:user /home/user/.kube/config
 ```
 
 Verify:
@@ -1369,160 +1193,848 @@ Verify:
 sudo -u user kubectl get nodes
 ```
 
-Tip:
-Set KUBECONFIG env if using a non-default path.
+Pitfalls:
 
-## Task: Verify API server health from the control-plane node (local endpoint / component status equivalent).
-in code snippets:  
-Command or YAML:
+* Ensure user shell honors $KUBECONFIG if not default path.
+* File permissions must allow read by user.
+
+# A6. RBAC & AUTH BASICS
+
+## Task: Create Role and RoleBinding for ServiceAccount
+Tags: domain:rbac action:create format:kubectl
+Command:
 ```bash
-kubectl get --raw "/readyz"
+kubectl create role pod-reader --verb=get,list,watch --resource=pods -n dev
+kubectl create serviceaccount app-sa -n dev
+kubectl create rolebinding read-pods --role=pod-reader --serviceaccount=dev:app-sa -n dev
 ```
 
 Verify:
 ```bash
-kubectl get componentstatuses
+kubectl auth can-i list pods --as=system:serviceaccount:dev:app-sa -n dev
 ```
 
-Tip:
-Use --server https://127.0.0.1:6443 with admin.conf if kubeconfig not set.
+Pitfalls:
 
-## Task: Renew control-plane certs and verify components come back healthy.
-in code snippets:  
-Command or YAML:
+* Namespace must match Role/RoleBinding.
+* Use resourceNames for narrowed permissions if needed.
+
+## Task: Create ClusterRoleBinding to SA
+Tags: domain:rbac action:create format:kubectl
+Command:
 ```bash
-sudo kubeadm certs renew all && sudo systemctl restart kubelet
-```
-
-Verify:
-```bash
-kubectl get nodes && kubectl get pods -n kube-system
-```
-
-Tip:
-Check /etc/kubernetes/pki for updated timestamps.
-
-## Task: Perform a control-plane upgrade with kubeadm and verify component versions afterward.
-in code snippets:  
-Command or YAML:
-```bash
-sudo kubeadm upgrade apply v1.<X>.Y
-sudo apt-get install -y kubelet=1.<X>.Y-00 kubectl=1.<X>.Y-00
-sudo systemctl restart kubelet
+kubectl create clusterrole ns-reader --verb=get,list --resource=namespaces
+kubectl create clusterrolebinding ns-read --clusterrole=ns-reader --serviceaccount=dev:app-sa
 ```
 
 Verify:
 ```bash
-kubectl get nodes -o wide
+kubectl auth can-i list namespaces --as=system:serviceaccount:dev:app-sa
 ```
 
-Tip:
-Drain other control-plane nodes only if instructed; always back up etcd first.
+Pitfalls:
 
-## Task: Upgrade a worker node (kubelet/kubectl) safely and verify it re-registers Ready.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
-sudo apt-get install -y kubelet=1.<X>.Y-00 kubectl=1.<X>.Y-00
-sudo systemctl restart kubelet
-kubectl uncordon <node>
-```
+* ClusterRoleBinding is cluster-scoped; no -n flag.
+* Avoid granting cluster-admin unless required.
 
-Verify:
-```bash
-kubectl get nodes
-```
-
-Tip:
-Never upgrade kubelet beyond kube-apiserver version.
-
-## Task: Identify version skew issues and correct kubelet/kubectl versions to within supported skew.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl version --short
-```
-
-Verify:
-```bash
-apt-cache madison kubelet | head
-```
-
-Tip:
-Kubelet must be <= control-plane version and no more than one minor behind.
-
-## Task: Backup etcd (snapshot) using correct certs and endpoints.
-in code snippets:  
-Command or YAML:
-```bash
-ETCDCTL_API=3 etcdctl --endpoints=https://127.0.0.1:2379 \
-  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
-  --cert=/etc/kubernetes/pki/etcd/server.crt \
-  --key=/etc/kubernetes/pki/etcd/server.key snapshot save /var/lib/etcd/snapshot.db
-```
-
-Verify:
-```bash
-ETCDCTL_API=3 etcdctl snapshot status /var/lib/etcd/snapshot.db
-```
-
-Tip:
-Run from control-plane node hosting etcd static pod.
-
-## Task: Restore etcd from snapshot and rewire the etcd static pod to the restored data-dir, then verify cluster state.
-in code snippets:  
-Command or YAML:
-```bash
-ETCDCTL_API=3 etcdctl snapshot restore /var/lib/etcd/snapshot.db --data-dir=/var/lib/etcd-restore
-sudo sed -i 's#--data-dir=.*#--data-dir=/var/lib/etcd-restore#' /etc/kubernetes/manifests/etcd.yaml
-```
-
-Verify:
-```bash
-kubectl get pods -n kube-system
-```
-
-Tip:
-Remove old member data-dir to avoid conflicts before restore.
-
-## Task: Create a DaemonSet that runs on every node and verify one pod per node.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
-apiVersion: apps/v1
-kind: DaemonSet
+## Task: Run Pod using a ServiceAccount
+Tags: domain:rbac action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: Pod
 metadata:
-  name: ds-syslog
-  namespace: default
+  name: sa-pod
 spec:
-  selector:
-    matchLabels:
-      app: ds-syslog
-  template:
-    metadata:
-      labels:
-        app: ds-syslog
-    spec:
-      containers:
-      - name: logger
-        image: busybox
-        command: ["sh", "-c", "sleep 3600"]
+  serviceAccountName: app-sa
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
+```
+
+Apply:
+```bash
+kubectl apply -n dev -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sa-pod
+spec:
+  serviceAccountName: app-sa
+  containers:
+  - name: app
+    image: busybox:1.36
+    command: ["sh","-c","sleep 3600"]
 EOF
 ```
 
 Verify:
 ```bash
-kubectl get pods -l app=ds-syslog -o wide
+kubectl get pod sa-pod -n dev -o jsonpath='{.spec.serviceAccountName}{"\n"}'
 ```
 
-Tip:
-DaemonSets ignore unschedulable taints unless NoSchedule exists.
+Pitfalls:
 
-## Task: Create a StatefulSet with volumeClaimTemplates and verify PVCs are created per replica.
-in code snippets:  
-Command or YAML:
+* ServiceAccount must exist in same namespace.
+* automountServiceAccountToken can be disabled; set explicitly if needed.
+
+## Task: Approve or deny CSRs
+Tags: domain:rbac action:edit format:kubectl
+Command:
+```bash
+kubectl get csr
+kubectl describe csr <name>
+kubectl certificate approve <name>
+# or deny
+kubectl certificate deny <name>
+```
+
+Verify:
+```bash
+kubectl get csr <name> -o wide
+```
+
+Pitfalls:
+
+* CSR signs user or kubelet cert; verify CN/Organization before approval.
+* After approval, kubelet may need restart to pick up cert.
+
+# A7. CORE TROUBLESHOOTING
+
+## Task: Troubleshoot CrashLoopBackOff and fix root cause
+Tags: domain:troubleshoot action:fix format:kubectl
+Fast triage:
+```bash
+kubectl describe pod <pod> -n <ns> | sed -n '/Events:/,$p'
+kubectl logs <pod> -n <ns> --previous
+```
+
+Common causes → fix:
+
+* Cause: bad command/probe → Fix: kubectl edit/patch deployment to correct command or probe.
+  Verify:
+  ```bash
+  kubectl rollout status deploy/<deploy> -n <ns>
+  ```
+* Cause: missing config/secret → Fix: mount correct ConfigMap/Secret.
+
+Pitfalls:
+
+* Use --previous to see failing attempt.
+* CrashLoopBackOff delays restart; be patient before verifying.
+
+## Task: Troubleshoot ImagePullBackOff
+Tags: domain:troubleshoot action:fix format:kubectl
+Fast triage:
+```bash
+kubectl describe pod <pod> -n <ns> | grep -i image -A2
+```
+
+Common causes → fix:
+
+* Cause: bad image → Fix:
+  ```bash
+  kubectl set image deploy/<d> <c>=<image>:<tag> -n <ns>
+  ```
+  Verify:
+  ```bash
+  kubectl rollout status deploy/<d> -n <ns>
+  ```
+* Cause: private registry → Fix: create imagePullSecret and set in pod spec.
+
+Pitfalls:
+
+* ImagePolicyWebhook can block latest tag; specify digest/tag.
+* Secret must be in same namespace and referenced.
+
+## Task: Troubleshoot Pending Pod (scheduling)
+Tags: domain:troubleshoot action:fix format:kubectl
+Fast triage:
+```bash
+kubectl describe pod <pod> -n <ns> | grep -A5 Events
+kubectl get nodes --show-labels
+```
+
+Common causes → fix:
+
+* Cause: insufficient CPU/mem → Fix: reduce requests or free capacity; verify:
+  ```bash
+  kubectl get pod <pod> -n <ns>
+  ```
+* Cause: missing toleration/affinity mismatch → Fix: add toleration or adjust selectors.
+
+Pitfalls:
+
+* PDBs do not affect scheduling; look for taints instead.
+* topologySpreadConstraints may also block scheduling.
+
+## Task: Troubleshoot Service no endpoints
+Tags: domain:troubleshoot action:fix format:kubectl
+Fast triage:
+```bash
+kubectl get svc <svc> -n <ns> -o wide
+kubectl get endpoints <svc> -n <ns>
+kubectl get pods -n <ns> -l <key>=<val> -o wide
+```
+
+Common causes → fix:
+
+* Cause: selector wrong → Fix: patch selector to match pod labels.
+  Verify:
+  ```bash
+  kubectl get endpoints <svc> -n <ns>
+  ```
+* Cause: pods NotReady → Fix readiness probe, check describe/events.
+
+Pitfalls:
+
+* Headless Services have ClusterIP=None; expect multiple endpoints.
+* targetPort must match containerPort name/number.
+
+## Task: Troubleshoot DNS failures end-to-end
+Tags: domain:troubleshoot action:fix format:kubectl
+Fast triage:
+```bash
+kubectl run -it --rm dnsdiag --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
+kubectl get svc -n kube-system kube-dns
+kubectl logs -n kube-system -l k8s-app=kube-dns --tail=20
+```
+
+Common causes → fix:
+
+* Cause: kube-proxy broken → Fix: check kube-proxy pods/logs; restart DS pod.
+  Verify:
+  ```bash
+  kubectl -n kube-system get ds kube-proxy -o wide
+  ```
+* Cause: NetworkPolicy blocks DNS → Fix: allow udp/53 to kube-dns.
+
+Pitfalls:
+
+* If CoreDNS Service ClusterIP missing, recreate from manifest.
+* Ensure resolv.conf inside pods uses cluster DNS IP.
+
+## Task: Troubleshoot Node NotReady
+Tags: domain:troubleshoot action:fix format:node-shell
+Fast triage:
+```bash
+kubectl describe node <node>
+sudo journalctl -u kubelet -n 50
+```
+
+Common causes → fix:
+
+* Cause: kubelet cert expired → Fix: sudo kubeadm cert renew kubelet.conf && sudo systemctl restart kubelet.
+  Verify:
+  ```bash
+  kubectl get nodes
+  ```
+* Cause: disk/memory pressure → Fix: free space, prune images; restart kubelet.
+
+Pitfalls:
+
+* Network partition can show Ready,SchedulingDisabled; check routes.
+* Check container runtime status (systemctl status containerd/crio).
+
+# A8. TOOLING, AUTOSCALING, CUSTOMIZATION
+
+## Task: Install/upgrade Helm chart with custom values
+Tags: domain:tooling action:create format:helm
+Command:
+```bash
+helm repo add stable https://charts.helm.sh/stable
+helm repo update
+helm upgrade --install metrics-server stable/metrics-server -n kube-system \
+  --set args[0]='--kubelet-insecure-tls'
+```
+
+Verify:
+```bash
+helm list -A | grep metrics-server
+kubectl get deploy -n kube-system metrics-server
+```
+
+Pitfalls:
+
+* --install ensures creation if release missing.
+* Use -f values.yaml for larger overrides.
+
+## Task: Render Helm template without installing
+Tags: domain:tooling action:observe format:helm
+Command:
+```bash
+helm template myrelease stable/metrics-server --namespace kube-system > rendered.yaml
+```
+
+Verify:
+```bash
+head -n 5 rendered.yaml
+```
+
+Pitfalls:
+
+* Template uses default values if none supplied; pass -f for overrides.
+* Keep apiVersions current after render.
+
+## Task: Apply base + overlay using Kustomize
+Tags: domain:tooling action:create format:kustomize
+Command:
+```bash
+kubectl apply -k overlays/prod
+```
+
+Verify:
+```bash
+kubectl kustomize overlays/prod | head -n 5
+```
+
+Pitfalls:
+
+* Ensure kustomization.yaml exists in directory.
+* overlays inherit from base; confirm namespace patches.
+
+## Task: Horizontal Pod Autoscaler for Deployment
+Tags: domain:workloads action:create format:kubectl
+Command:
+```bash
+kubectl autoscale deploy web --min=2 --max=5 --cpu-percent=70
+```
+
+Verify:
+```bash
+kubectl describe hpa web
+```
+
+Pitfalls:
+
+* Requires metrics-server; HPA shows Unknown without metrics.
+* HPA scales on requests, not limits.
+
+## Task: HPA YAML skeleton (cpu utilization)
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+EOF
+```
+
+Verify:
+```bash
+kubectl get hpa web-hpa
+```
+
+Pitfalls:
+
+* apiVersion autoscaling/v2 required for advanced metrics.
+* Ensure Deployment has resource requests set.
+
+## Task: Monitor resource usage quickly
+Tags: domain:tooling action:observe format:kubectl
+Command:
+```bash
+kubectl top node
+kubectl top pod -A
+```
+
+Verify:
+```bash
+kubectl top pod web-xxxxx
+```
+
+Pitfalls:
+
+* metrics-server must be running; otherwise “metrics not available”.
+* Values are near real-time; not historical.
+
+## Task: Create ResourceQuota and LimitRange in namespace
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rq-basic
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: lr-basic
+spec:
+  limits:
+  - default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 200m
+      memory: 256Mi
+    type: Container
+```
+
+Apply:
+```bash
+kubectl apply -n dev -f - <<'EOF'
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rq-basic
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "2"
+    requests.memory: 2Gi
+    limits.cpu: "4"
+    limits.memory: 4Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: lr-basic
+spec:
+  limits:
+  - default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 200m
+      memory: 256Mi
+    type: Container
+EOF
+```
+
+Verify:
+```bash
+kubectl describe resourcequota rq-basic -n dev
+kubectl describe limitrange lr-basic -n dev
+```
+
+Pitfalls:
+
+* Quota breaches block creation; check events for “exceeded quota”.
+* LimitRange defaults apply only when requests/limits omitted.
+
+## Task: Gateway API quick triage
+Tags: domain:net action:debug format:gateway-api
+Fast triage:
+```bash
+kubectl get gatewayclasses,gateway,httproutes -A
+kubectl describe httproute <route> -n <ns>
+kubectl describe gateway <gw> -n <ns>
+```
+
+Common causes → fix:
+
+* Cause: parentRefs mismatch → Fix: set httproute.spec.parentRefs to existing Gateway name/namespace.
+  Verify:
+  ```bash
+  kubectl get httproute <route> -n <ns> -o yaml | grep parentRefs -A5
+  ```
+* Cause: backend Service wrong port → Fix: update backendRefs.port.
+
+Pitfalls:
+
+* Controller-specific; ensure gatewayclass has active controller.
+* Check events on Gateway/HTTPRoute for attachment errors.
+
+## Task: Use kubectl port-forward and proxy for quick validation (OPTIONAL)
+Tags: domain:tooling action:debug format:kubectl
+Command:
+```bash
+kubectl port-forward svc/web 8080:80 &
+# open new shell
+kubectl proxy --port=8001 &
+```
+
+Verify:
+```bash
+curl -s http://127.0.0.1:8080
+curl -s http://127.0.0.1:8001/api
+```
+
+Pitfalls:
+
+* port-forward blocks terminal; use background (&) carefully.
+* proxy exposes API on localhost only by default.
+
+## Task: kubectl debug with ephemeral container (OPTIONAL)
+Tags: domain:troubleshoot action:debug format:kubectl
+Command:
+```bash
+kubectl debug pod/<pod> -it --image=busybox:1.36 --target=<container>
+```
+
+Verify:
+```bash
+kubectl get pod <pod> -o jsonpath='{.spec.ephemeralContainers[*].name}{"\n"}'
+```
+
+Pitfalls:
+
+* Requires EnableEphemeralContainers feature (usually on >=1.25).
+* Ephemeral containers share namespaces but no ports.
+
+# B1. ADVANCED kubectl SPEED
+
+## Task: Patch Deployment image via strategic merge
+Tags: domain:workloads action:patch format:kubectl
+Command:
+```bash
+kubectl patch deploy web -p '{"spec":{"template":{"spec":{"containers":[{"name":"nginx","image":"nginx:1.26"}]}}}}'
+```
+
+Verify:
+```bash
+kubectl get deploy web -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+```
+
+Pitfalls:
+
+* Ensure container name matches existing one.
+* Patch preserves other fields; use apply for larger changes.
+
+## Task: Patch Service type to NodePort
+Tags: domain:net action:patch format:kubectl
+Command:
+```bash
+kubectl patch svc web -p '{"spec":{"type":"NodePort"}}'
+```
+
+Verify:
+```bash
+kubectl get svc web -o wide
+```
+
+Pitfalls:
+
+* Existing ClusterIP preserved; nodePort auto-assigned unless set.
+* May disrupt clients expecting ClusterIP only.
+
+## Task: Sort and filter events quickly
+Tags: domain:tooling action:observe format:kubectl
+Command:
+```bash
+kubectl get events --sort-by=.metadata.creationTimestamp
+kubectl get events --field-selector type=Warning --sort-by=.metadata.creationTimestamp
+```
+
+Verify:
+```bash
+kubectl get events --field-selector involvedObject.name=<obj>
+```
+
+Pitfalls:
+
+* Events rotate fast; capture early.
+* API priority/flow control may limit large queries.
+
+# B2. ADVANCED WORKLOAD DETAILS
+
+## Task: List init containers and termination reasons
+Tags: domain:workloads action:observe format:kubectl
+Command:
+```bash
+kubectl get pod <pod> -o jsonpath='{.spec.initContainers[*].name}{"\n"}'
+kubectl get pod <pod> -o jsonpath='{range .status.initContainerStatuses[*]}{.name}{"="}{.state.terminated.reason}{"\n"}{end}'
+```
+
+Verify:
+```bash
+kubectl describe pod <pod> | sed -n '/Init Containers:/,/Containers:/p'
+```
+
+Pitfalls:
+
+* Add {"\n"} to jsonpath to avoid mashed output.
+* initContainers array absent if none defined.
+
+## Task: Check resource requests/limits per container
+Tags: domain:workloads action:observe format:kubectl
+Command:
+```bash
+kubectl get pod <pod> -o jsonpath='{range .spec.containers[*]}{.name}{" req="}{.resources.requests}{" lim="}{.resources.limits}{"\n"}{end}'
+```
+
+Verify:
+```bash
+kubectl describe pod <pod> | grep -A4 Limits
+```
+
+Pitfalls:
+
+* Empty map means defaults/LimitRange may apply.
+* Requests gate scheduling; limits control runtime OOMKill (137).
+
+# B3. NETWORKING (EDGE)
+
+## Task: Create headless Service for StatefulSet DNS
+Tags: domain:net action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-headless
+spec:
+  clusterIP: None
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 80
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-headless
+spec:
+  clusterIP: None
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
+```
+
+Verify:
+```bash
+kubectl get endpoints web-headless -o wide
+```
+
+Pitfalls:
+
+* Without selector, no endpoints generated.
+* StatefulSet requires headless svc for stable DNS.
+
+## Task: Default-deny ingress NetworkPolicy and allow specific namespace
+Tags: domain:net action:create format:yaml
+Manifest:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prod-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          access: allowed
+```
+
+Apply:
+```bash
+kubectl label namespace prod access=allowed
+kubectl apply -n default -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prod-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: web
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          access: allowed
+EOF
+```
+
+Verify:
+```bash
+kubectl get netpol -n default
+kubectl run -n prod -it --rm prodtest --image=busybox:1.36 --restart=Never -- wget -qO- web.default.svc.cluster.local
+```
+
+Pitfalls:
+
+* Policies are additive; ensure allow rules exist for required traffic.
+* CNI must support NetworkPolicy (Calico/Cilium/Weave).
+
+## Task: Allow egress DNS after default-deny egress
+Tags: domain:net action:create format:yaml
+Manifest:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+```
+
+Apply:
+```bash
+kubectl apply -n default -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+EOF
+```
+
+Verify:
+```bash
+kubectl run -it --rm dnstest --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
+```
+
+Pitfalls:
+
+* Ensure CoreDNS labels match k8s-app=kube-dns.
+* If TCP DNS needed, add TCP port 53.
+
+# B4. STORAGE (EDGE)
+
+## Task: StatefulSet with volumeClaimTemplates
+Tags: domain:storage action:create format:yaml
+Manifest:
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: web-headless
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
+```
+
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: apps/v1
@@ -1530,7 +2042,7 @@ kind: StatefulSet
 metadata:
   name: web
 spec:
-  serviceName: web
+  serviceName: web-headless
   replicas: 2
   selector:
     matchLabels:
@@ -1562,451 +2074,355 @@ Verify:
 kubectl get pvc -l app=web
 ```
 
-Tip:
-Ensure a headless Service exists for StatefulSet DNS.
+Pitfalls:
 
-## Task: Perform a rolling update on a Deployment and verify revision history/rollout status.
-in code snippets:  
-Command or YAML:
+* Headless Service required for stable network IDs.
+* VolumeClaimTemplates immutable after creation.
+
+## Task: StorageClass allowVolumeExpansion note
+Tags: domain:storage action:observe format:kubectl
+Command:
 ```bash
-kubectl set image deploy/web nginx=nginx:1.25 && kubectl rollout status deploy/web
+kubectl get sc -o jsonpath='{range .items[*]}{.metadata.name}{" expand="}{.allowVolumeExpansion}{"\n"}{end}'
 ```
 
 Verify:
 ```bash
-kubectl rollout history deploy/web
+kubectl describe sc <sc>
 ```
 
-Tip:
-Use --record is deprecated; history keeps revisions automatically.
+Pitfalls:
 
-## Task: Roll back a Deployment to a previous revision and verify pods use the old image.
-in code snippets:  
-Command or YAML:
+* Expansion only works for supported drivers.
+* Must patch PVC to larger size; cannot shrink.
+
+# B5. CLUSTER ADMIN (EDGE)
+
+## Task: Locate and edit static pod manifests
+Tags: domain:cluster-arch action:edit format:node-shell
+Command:
 ```bash
-kubectl rollout undo deploy/web --to-revision=1
+grep staticPodPath /var/lib/kubelet/config.yaml || echo /etc/kubernetes/manifests
+echo "edit files then kubelet auto-restarts static pods"
 ```
 
 Verify:
 ```bash
-kubectl get pods -l app=web -o jsonpath='{.items[*].spec.containers[*].image}'
+kubectl get pods -n kube-system -w | grep -E 'kube-apiserver|kube-scheduler|kube-controller-manager|etcd'
 ```
 
-Tip:
-Check revision numbers with rollout history before undo.
+Pitfalls:
 
-## Task: Pause a Deployment rollout, apply changes, then resume and verify rollout behavior.
-in code snippets:  
-Command or YAML:
+* Editing manifests can briefly stop API; use care on single-node control plane.
+* Ensure YAML indentation remains valid; kubelet loops on invalid files.
+
+## Task: Diagnose container runtime failure (containerd/crio)
+Tags: domain:cluster-arch action:debug format:node-shell
+Command:
 ```bash
-kubectl rollout pause deploy/web
-kubectl set image deploy/web nginx=nginx:1.26
-kubectl rollout resume deploy/web
+sudo systemctl status containerd || sudo systemctl status crio
+sudo crictl ps -a
 ```
 
 Verify:
 ```bash
-kubectl rollout status deploy/web
+sudo systemctl restart containerd && crictl ps
 ```
 
-Tip:
-Paused deployments accept spec changes without creating new ReplicaSets until resumed.
+Pitfalls:
 
-## Task: Create a Job that retries on failure and verify completion and pod logs.
-in code snippets:  
-Command or YAML:
+* crictl requires runtime endpoint; configure /etc/crictl.yaml if missing.
+* Runtime failure keeps kubelet NotReady.
+
+## Task: API server health probe locally
+Tags: domain:cluster-arch action:observe format:kubectl
+Command:
+```bash
+kubectl get --raw "/readyz"
+```
+
+Verify:
+```bash
+kubectl get componentstatuses
+```
+
+Pitfalls:
+
+* componentstatuses deprecated; rely on /readyz and /livez.
+* Use admin.conf or correct kubeconfig.
+
+# B6. YAML SKELETONS (MEMORIZE)
+
+## Task: Deployment skeleton with selector matchLabels
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
+```
+
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: retry-job
+  name: app
 spec:
-  backoffLimit: 3
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
   template:
+    metadata:
+      labels:
+        app: app
     spec:
-      restartPolicy: OnFailure
       containers:
-      - name: retry
-        image: busybox
-        command: ["sh", "-c", "echo run; exit 0"]
+      - name: app
+        image: nginx:1.25
+        ports:
+        - containerPort: 80
 EOF
 ```
 
 Verify:
 ```bash
-kubectl get jobs retry-job -o wide && kubectl logs job/retry-job
+kubectl get deploy app
 ```
 
-Tip:
-backoffLimit controls retry count; use describe to see failures fast.
+Pitfalls:
 
-## Task: Create a CronJob with a schedule and verify it created Jobs on schedule.
-in code snippets:  
-Command or YAML:
+* selector must match template labels or apply fails.
+* Strategy defaults to RollingUpdate.
+
+## Task: DaemonSet skeleton
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ds-syslog
+spec:
+  selector:
+    matchLabels:
+      app: ds-syslog
+  template:
+    metadata:
+      labels:
+        app: ds-syslog
+    spec:
+      containers:
+      - name: logger
+        image: busybox:1.36
+        command: ["sh","-c","sleep 3600"]
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ds-syslog
+spec:
+  selector:
+    matchLabels:
+      app: ds-syslog
+  template:
+    metadata:
+      labels:
+        app: ds-syslog
+    spec:
+      containers:
+      - name: logger
+        image: busybox:1.36
+        command: ["sh","-c","sleep 3600"]
+EOF
+```
+
+Verify:
+```bash
+kubectl get pods -l app=ds-syslog -o wide
+```
+
+Pitfalls:
+
+* No replicas field; schedules one per Ready node (taints may block).
+* Use tolerations to run on masters if tainted.
+
+## Task: Job skeleton
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: simple-job
+spec:
+  completions: 1
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: job
+        image: busybox:1.36
+        command: ["sh","-c","echo hi"]
+```
+
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: batch/v1
+kind: Job
+metadata:
+  name: simple-job
+spec:
+  completions: 1
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: job
+        image: busybox:1.36
+        command: ["sh","-c","echo hi"]
+EOF
+```
+
+Verify:
+```bash
+kubectl get job simple-job -o wide
+```
+
+Pitfalls:
+
+* restartPolicy must be Never/OnFailure for jobs.
+* Use ttlSecondsAfterFinished to auto-clean if desired.
+
+## Task: CronJob skeleton (batch/v1)
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: cj
+  name: simple-cj
 spec:
-  schedule: "*/1 * * * *"
+  schedule: "*/5 * * * *"
   jobTemplate:
     spec:
       template:
         spec:
           restartPolicy: OnFailure
           containers:
-          - name: ping
-            image: busybox
-            command: ["sh", "-c", "date"]
-EOF
+          - name: cj
+            image: busybox:1.36
+            command: ["sh","-c","echo run"]
 ```
 
-Verify:
-```bash
-kubectl get jobs -l job-name -w
-```
-
-Tip:
-Set startingDeadlineSeconds to avoid missed runs backlog.
-
-## Task: Create a pod with an initContainer and verify init runs before app container starts.
-in code snippets:  
-Command or YAML:
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
+apiVersion: batch/v1
+kind: CronJob
 metadata:
-  name: init-demo
+  name: simple-cj
 spec:
-  initContainers:
-  - name: init
-    image: busybox
-    command: ["sh", "-c", "echo init > /work/flag"]
-    volumeMounts:
-    - name: work
-      mountPath: /work
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "cat /work/flag && sleep 3600"]
-    volumeMounts:
-    - name: work
-      mountPath: /work
-  volumes:
-  - name: work
-    emptyDir: {}
-EOF
-```
-
-Verify:
-```bash
-kubectl logs init-demo -c app --tail=1
-```
-
-Tip:
-Init must complete before main containers start; check Pod status Init:0/1.
-
-## Task: Add resource requests/limits to a Pod and verify scheduling behavior (requests gate scheduling).
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: res-pod
-spec:
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
-    resources:
-      requests:
-        cpu: "250m"
-        memory: "256Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-EOF
-```
-
-Verify:
-```bash
-kubectl describe pod res-pod | grep -A3 Limits
-```
-
-Tip:
-If Pending, check node allocatable vs. requests with kubectl describe pod.
-
-## Task: Schedule a Pod using nodeSelector and verify it lands on the labeled node.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl label node <node> disk=ssd
-kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: selector-pod
-spec:
-  nodeSelector:
-    disk: ssd
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
-EOF
-```
-
-Verify:
-```bash
-kubectl get pod selector-pod -o wide
-```
-
-Tip:
-Labels must already exist on the target node.
-
-## Task: Schedule a Pod using required nodeAffinity and verify placement.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: affinity-pod
-spec:
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: disktype
-            operator: In
-            values: [ssd]
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
-EOF
-```
-
-Verify:
-```bash
-kubectl get pod affinity-pod -o wide
-```
-
-Tip:
-If Pending, ensure nodes have matching label disktype=ssd.
-
-## Task: Prevent co-scheduling using podAntiAffinity and verify pods spread across nodes.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: anti
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: anti
-  template:
-    metadata:
-      labels:
-        app: anti
+  schedule: "*/5 * * * *"
+  jobTemplate:
     spec:
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values: [anti]
-            topologyKey: kubernetes.io/hostname
-      containers:
-      - name: app
-        image: busybox
-        command: ["sh", "-c", "sleep 3600"]
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: cj
+            image: busybox:1.36
+            command: ["sh","-c","echo run"]
 EOF
 ```
 
 Verify:
 ```bash
-kubectl get pods -l app=anti -o wide
+kubectl get cronjob simple-cj
 ```
 
-Tip:
-Need at least two nodes Ready for required anti-affinity.
+Pitfalls:
 
-## Task: Taint a node and make a Pod tolerate it; verify it schedules only with toleration.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl taint nodes <node> key=value:NoSchedule
-kubectl apply -f - <<'EOF'
+* startingDeadlineSeconds prevents missed run backlog.
+* concurrencyPolicy (Forbid/Replace) controls overlap.
+
+## Task: Service skeleton (ClusterIP)
+Tags: domain:net action:create format:yaml
+Manifest:
+```yaml
 apiVersion: v1
-kind: Pod
+kind: Service
 metadata:
-  name: tolerate
+  name: web-svc
 spec:
-  tolerations:
-  - key: "key"
-    operator: "Equal"
-    value: "value"
-    effect: "NoSchedule"
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
-EOF
+  type: ClusterIP
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 80
 ```
 
-Verify:
-```bash
-kubectl get pod tolerate -o wide
-```
-
-Tip:
-Remove taint with kubectl taint nodes <node> key:NoSchedule- when done.
-
-## Task: Create a PriorityClass and run a Pod using it; verify priority is applied.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: high-priority
-value: 100000
-globalDefault: false
-description: "high"
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: prio-pod
-spec:
-  priorityClassName: high-priority
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "sleep 3600"]
-EOF
-```
-
-Verify:
-```bash
-kubectl get pod prio-pod -o jsonpath='{.spec.priority}'
-```
-
-Tip:
-Higher value preempts lower if resources scarce.
-
-## Task: Troubleshoot a Pending Pod due to taints/affinity/resources and fix it.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl describe pod <pod>
-```
-
-Verify:
-```bash
-kubectl get pod <pod>
-```
-
-Tip:
-Check Events for FailedScheduling; adjust tolerations/labels/resources accordingly.
-
-## Task: Create a ClusterIP Service selecting a Deployment and verify Endpoints match pods.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl expose deploy web --port=80 --target-port=80 --type=ClusterIP
-```
-
-Verify:
-```bash
-kubectl get endpoints web -o wide
-```
-
-Tip:
-Selector must match pod labels; check with kubectl get pods --show-labels.
-
-## Task: Fix a Service that has no endpoints (selector mismatch) and verify endpoints appear.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl patch svc web -p '{\"spec\":{\"selector\":{\"app\":\"web\"}}}'
-```
-
-Verify:
-```bash
-kubectl get endpoints web
-```
-
-Tip:
-Align Service selector to Deployment labels; patch is fastest.
-
-## Task: Create a NodePort Service and verify connectivity from a node (curl to NodeIP:NodePort).
-in code snippets:  
-Command or YAML:
-```bash
-kubectl expose deploy web --type=NodePort --port=80 --target-port=80 --name=web-nodeport
-```
-
-Verify:
-```bash
-NODEPORT=$(kubectl get svc web-nodeport -o jsonpath='{.spec.ports[0].nodePort}')
-curl -s http://$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'):${NODEPORT}
-```
-
-Tip:
-Use node InternalIP; avoid master if tainted without toleration.
-
-## Task: Create a headless Service and verify DNS returns pod A records (StatefulSet use-case).
-in code snippets:  
-Command or YAML:
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-headless
+  name: web-svc
 spec:
-  clusterIP: None
+  type: ClusterIP
   selector:
     app: web
   ports:
   - port: 80
+    targetPort: 80
 EOF
 ```
 
 Verify:
 ```bash
-kubectl run -it --rm dnscheck --image=busybox:1.36 --restart=Never -- nslookup web-headless
+kubectl get svc web-svc -o wide
 ```
 
-Tip:
-Headless service required for stable DNS entries with StatefulSet.
+Pitfalls:
 
-## Task: Create an Ingress with host + path routing to a Service and verify routing works.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
+* Selector must match pod labels; headless requires clusterIP: None.
+* targetPort can be name or number.
+
+## Task: Ingress skeleton (networking.k8s.io/v1)
+Tags: domain:net action:create format:yaml
+Manifest:
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: web-ing
+  name: web-ing-basic
 spec:
   rules:
   - host: example.com
@@ -2016,7 +2432,28 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: web
+            name: web-svc
+            port:
+              number: 80
+```
+
+Apply:
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ing-basic
+spec:
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-svc
             port:
               number: 80
 EOF
@@ -2024,37 +2461,35 @@ EOF
 
 Verify:
 ```bash
-kubectl get ingress web-ing && curl -H "Host: example.com" http://<ingress-ip>
+kubectl get ingress web-ing-basic
 ```
 
-Tip:
-Ensure ingress controller is installed; check ingress-class annotation if needed.
+Pitfalls:
 
-## Task: Update an Ingress rule (host/path/backend) and verify it takes effect.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl patch ingress web-ing --type='json' -p='[{\"op\":\"replace\",\"path\":\"/spec/rules/0/host\",\"value\":\"new.example.com\"}]'
+* Requires controller; check events for class errors.
+* TLS requires secret and tls block.
+
+## Task: NetworkPolicy deny all ingress skeleton
+Tags: domain:net action:create format:yaml
+Manifest:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
 ```
 
-Verify:
-```bash
-kubectl describe ingress web-ing
-```
-
-Tip:
-Some controllers need reload time; watch events after patch.
-
-## Task: Apply a default-deny ingress NetworkPolicy and verify traffic is blocked.
-in code snippets:  
-Command or YAML:
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: default-deny-ingress
-  namespace: default
+  name: deny-all
 spec:
   podSelector: {}
   policyTypes:
@@ -2064,177 +2499,106 @@ EOF
 
 Verify:
 ```bash
-kubectl run -it --rm test --image=busybox:1.36 --restart=Never -- wget -qO- web.default.svc.cluster.local || echo blocked
+kubectl get netpol deny-all
 ```
 
-Tip:
-Ensure CNI supports NetworkPolicy (Calico/Cilium/Weave).
+Pitfalls:
 
-## Task: Allow ingress only from a specific namespace label and verify traffic works only from that namespace.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl label namespace prod access=allowed
-kubectl apply -f - <<'EOF'
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+* Blocks all ingress unless additional allow policies exist.
+* CNI must implement NetworkPolicy.
+
+## Task: RBAC Role + RoleBinding skeleton
+Tags: domain:rbac action:create format:yaml
+Manifest:
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
-  name: allow-prod-ingress
-  namespace: default
-spec:
-  podSelector:
-    matchLabels:
-      app: web
-  ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          access: allowed
-EOF
-```
-
-Verify:
-```bash
-kubectl run -n prod -it --rm prodtest --image=busybox:1.36 --restart=Never -- wget -qO- web.default.svc.cluster.local
-```
-
-Tip:
-Pods in other namespaces should fail; quick check with a non-labeled namespace.
-
-## Task: Apply default-deny egress and then allow DNS egress to CoreDNS; verify DNS works.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl apply -f - <<'EOF'
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny-egress
-  namespace: default
-spec:
-  podSelector: {}
-  policyTypes:
-  - Egress
-EOF
+  name: read-pods
+  namespace: dev
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","list"]
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
 metadata:
-  name: allow-dns
-  namespace: default
-spec:
-  podSelector: {}
-  policyTypes:
-  - Egress
-  egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-    ports:
-    - protocol: UDP
-      port: 53
-EOF
+  name: read-pods
+  namespace: dev
+subjects:
+- kind: ServiceAccount
+  name: app-sa
+  namespace: dev
+roleRef:
+  kind: Role
+  name: read-pods
+  apiGroup: rbac.authorization.k8s.io
 ```
 
-Verify:
-```bash
-kubectl run -it --rm dnstest --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
-```
-
-Tip:
-Ensure CoreDNS labeled k8s-app=kube-dns; adjust selectors if different.
-
-## Task: Troubleshoot DNS failures (CoreDNS pods/config/service) and restore name resolution.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get pods -n kube-system -l k8s-app=kube-dns -o wide
-kubectl logs -n kube-system -l k8s-app=kube-dns
-```
-
-Verify:
-```bash
-kubectl run -it --rm dnstest --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
-```
-
-Tip:
-Check ConfigMap kube-dns in kube-system for Corefile issues.
-
-## Task: Troubleshoot “Service unreachable” (kube-proxy, endpoints, targetPort/port) and fix routing.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get svc web -o yaml | grep -E 'port:|targetPort'
-kubectl get endpoints web
-```
-
-Verify:
-```bash
-kubectl run -it --rm curl --image=busybox:1.36 --restart=Never -- wget -qO- web
-```
-
-Tip:
-Ensure kube-proxy is running: kubectl -n kube-system get ds kube-proxy -o wide.
-
-## Task: Identify CNI plugin health on nodes and fix a pod sandbox/CNI error symptom chain.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get pods -A | grep cni
-sudo systemctl status kubelet
-```
-
-Verify:
-```bash
-kubectl describe pod <pod> | grep -i sandbox
-```
-
-Tip:
-Check /etc/cni/net.d configs; restart kubelet after fixing CNI files.
-
-## Task: Create a PV with a specific reclaimPolicy and verify PV/PVC binding behavior.
-in code snippets:  
-Command or YAML:
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: PersistentVolume
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
-  name: pv1
-spec:
-  capacity:
-    storage: 1Gi
-  accessModes: ["ReadWriteOnce"]
-  persistentVolumeReclaimPolicy: Retain
-  hostPath:
-    path: /mnt/pv1
+  name: read-pods
+  namespace: dev
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get","list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: dev
+subjects:
+- kind: ServiceAccount
+  name: app-sa
+  namespace: dev
+roleRef:
+  kind: Role
+  name: read-pods
+  apiGroup: rbac.authorization.k8s.io
 EOF
 ```
 
 Verify:
 ```bash
-kubectl get pv pv1
+kubectl auth can-i list pods --as=system:serviceaccount:dev:app-sa -n dev
 ```
 
-Tip:
-Ensure hostPath exists on all nodes if scheduled workload may move.
+Pitfalls:
 
-## Task: Create a PVC using a specific StorageClass and verify it binds (or identify why it doesn’t).
-in code snippets:  
-Command or YAML:
+* roleRef must match Role kind and apiGroup exactly.
+* Binding namespace must match Role namespace.
+
+## Task: PVC skeleton
+Tags: domain:storage action:create format:yaml
+Manifest:
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-basic
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: claim1
+  name: pvc-basic
 spec:
   accessModes: ["ReadWriteOnce"]
-  storageClassName: standard
   resources:
     requests:
       storage: 1Gi
@@ -2243,324 +2607,124 @@ EOF
 
 Verify:
 ```bash
-kubectl describe pvc claim1
+kubectl get pvc pvc-basic
 ```
 
-Tip:
-If Pending, check available PVs or dynamic provisioner logs.
+Pitfalls:
 
-## Task: Troubleshoot a PVC stuck Pending (no matching PV / wrong SC / wrong accessModes) and fix it.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl describe pvc <pvc>
+* Specify storageClassName if default absent.
+* RWX support depends on provisioner.
+
+## Task: HPA skeleton (autoscaling/v2)
+Tags: domain:workloads action:create format:yaml
+Manifest:
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
 ```
 
-Verify:
-```bash
-kubectl get pvc <pvc>
-```
-
-Tip:
-Adjust storageClassName/accessModes or create matching PV quickly.
-
-## Task: Mount a PVC into a Pod and verify read/write to the mount path.
-in code snippets:  
-Command or YAML:
+Apply:
 ```bash
 kubectl apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
-  name: pvc-pod
+  name: app-hpa
 spec:
-  containers:
-  - name: app
-    image: busybox
-    command: ["sh", "-c", "echo data > /data/test && cat /data/test && sleep 3600"]
-    volumeMounts:
-    - mountPath: /data
-      name: data
-  volumes:
-  - name: data
-    persistentVolumeClaim:
-      claimName: claim1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
 EOF
 ```
 
 Verify:
 ```bash
-kubectl logs pvc-pod | head -n 1
+kubectl get hpa app-hpa
 ```
 
-Tip:
-Pod must be in same namespace as PVC.
+Pitfalls:
 
-## Task: Expand a PVC (if SC supports) and verify requested capacity is updated/applied.
-in code snippets:  
-Command or YAML:
+* Requires metrics-server; otherwise metrics Unknown.
+* Ensure Deployment has cpu requests.
+
+# B7. EXAM HYGIENE / TIME SAVERS
+
+## Task: Speed up kubectl usage
+Tags: domain:tooling action:edit format:kubectl
+Command:
 ```bash
-kubectl patch pvc claim1 -p '{"spec":{"resources":{"requests":{"storage":"2Gi"}}}}'
+alias k=kubectl
+complete -F __start_kubectl k
+export do='--dry-run=client -o yaml'
 ```
 
 Verify:
 ```bash
-kubectl get pvc claim1
+k get pods --help >/dev/null
 ```
 
-Tip:
-StorageClass must allow expansion (allowVolumeExpansion: true).
+Pitfalls:
 
-## Task: Explain and verify PV lifecycle states (Available/Bound/Released) by deleting PVC and observing PV.
-in code snippets:  
-Command or YAML:
+* Aliases persist only in current shell unless added to rc file.
+* Autocomplete script depends on bash-completion installed.
+
+## Task: Set default namespace to avoid mistakes
+Tags: domain:tooling action:edit format:kubectl
+Command:
 ```bash
-kubectl delete pvc claim1
+kubectl config set-context --current --namespace=dev
 ```
 
 Verify:
 ```bash
-kubectl get pv pv1 -w
+kubectl config view --minify | grep namespace
 ```
 
-Tip:
-Retain reclaimPolicy keeps data; Recycle deprecated.
+Pitfalls:
 
-## Task: Triage a CrashLoopBackOff: find the failing container, view previous logs, and fix the cause.
-in code snippets:  
-Command or YAML:
+* Changes current context only; switch contexts resets namespace.
+* Avoid hardcoding namespace in scripts if switching often.
+
+## Task: Validate manifests quickly (dry-run/explain)
+Tags: domain:tooling action:observe format:kubectl
+Command:
 ```bash
-kubectl describe pod <pod>
-kubectl logs <pod> --previous
+kubectl apply -f file.yaml --dry-run=client
+kubectl explain pod.spec.containers
 ```
 
 Verify:
 ```bash
-kubectl get pod <pod>
+kubectl explain deployment.spec.selector
 ```
 
-Tip:
-Check liveness/readiness probes misconfigurations causing restarts.
+Pitfalls:
 
-## Task: Triage an ImagePullBackOff: identify exact image error and fix image/secret/policy.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl describe pod <pod> | grep -i image
-kubectl get secret -A | grep docker
-```
-
-Verify:
-```bash
-kubectl get pod <pod>
-```
-
-Tip:
-Use kubectl set image deploy/<name> <container>=<image>:<tag> to correct quickly.
-
-## Task: Triage a Pending pod: determine if it’s resources/taints/affinity and resolve.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl describe pod <pod>
-kubectl get nodes --show-labels
-```
-
-Verify:
-```bash
-kubectl get pod <pod>
-```
-
-Tip:
-FailedScheduling events point to taints or insufficient CPU/memory.
-
-## Task: Triage a Pod stuck Terminating: find blockers (finalizers/volume) and force delete safely.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get pod <pod> -o jsonpath='{.metadata.finalizers}'
-kubectl delete pod <pod> --grace-period=0 --force
-```
-
-Verify:
-```bash
-kubectl get pod <pod>
-```
-
-Tip:
-If finalizer present, patch to remove finalizers before force delete.
-
-## Task: Debug a Node NotReady: use describe + kubelet logs and restore node to Ready.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl describe node <node>
-sudo journalctl -u kubelet -n 50
-```
-
-Verify:
-```bash
-kubectl get nodes
-```
-
-Tip:
-Check network, certificate, and kubelet config quickly.
-
-## Task: Debug a node with DiskPressure/MemoryPressure and restore scheduling health.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl describe node <node> | grep -A2 Conditions
-```
-
-Verify:
-```bash
-kubectl get nodes
-```
-
-Tip:
-Free space under /var/lib/kubelet and cleanup images with crictl rmi --prune.
-
-## Task: Debug kubelet not starting on a node and restore node registration.
-in code snippets:  
-Command or YAML:
-```bash
-sudo systemctl status kubelet
-sudo journalctl -u kubelet -n 50
-```
-
-Verify:
-```bash
-kubectl get nodes
-```
-
-Tip:
-Check /var/lib/kubelet/config.yaml and certificate permissions.
-
-## Task: Debug container runtime failure (containerd/cri) using systemctl + crictl and restore workloads.
-in code snippets:  
-Command or YAML:
-```bash
-sudo systemctl status containerd
-sudo crictl ps -a
-```
-
-Verify:
-```bash
-kubectl get pods -A
-```
-
-Tip:
-Restart runtime with sudo systemctl restart containerd after fixing config.
-
-## Task: Debug a missing control plane component (static pod not running) and bring it back.
-in code snippets:  
-Command or YAML:
-```bash
-ls /etc/kubernetes/manifests
-sudo crictl ps -a | grep kube-apiserver
-```
-
-Verify:
-```bash
-kubectl get pods -n kube-system
-```
-
-Tip:
-Restore manifest yaml; kubelet recreates static pod automatically.
-
-## Task: Debug API server unreachable from kubectl and restore cluster access (kubeconfig/context/certs).
-in code snippets:  
-Command or YAML:
-```bash
-kubectl config view
-kubectl config use-context <ctx>
-```
-
-Verify:
-```bash
-kubectl get nodes
-```
-
-Tip:
-If cert expired, renew with kubeadm certs renew apiserver and restart kubelet.
-
-## Task: Debug scheduler/controller-manager issues by checking static pod logs/status and fixing manifest flags.
-in code snippets:  
-Command or YAML:
-```bash
-sudo crictl logs $(sudo crictl ps | grep kube-scheduler | awk '{print $1}')
-sudo vi /etc/kubernetes/manifests/kube-scheduler.yaml
-```
-
-Verify:
-```bash
-kubectl get pods -n kube-system -l component=kube-scheduler
-```
-
-Tip:
-Check leader-elect flags and kubeconfig paths in manifest.
-
-## Task: Debug etcd issues (static pod/logs/certs) and restore API functionality.
-in code snippets:  
-Command or YAML:
-```bash
-sudo crictl logs $(sudo crictl ps | grep etcd | awk '{print $1}')
-sudo ls -l /etc/kubernetes/pki/etcd
-```
-
-Verify:
-```bash
-kubectl get componentstatuses
-```
-
-Tip:
-Cert/key mismatches cause etcd startup failure; compare against manifest paths.
-
-## Task: Debug CoreDNS resolution failures end-to-end and confirm resolution inside a test pod.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get svc -n kube-system kube-dns
-kubectl logs -n kube-system -l k8s-app=kube-dns
-```
-
-Verify:
-```bash
-kubectl run -it --rm dnscheck --image=busybox:1.36 --restart=Never -- nslookup kubernetes.default
-```
-
-Tip:
-Check kube-proxy iptables/ipvs if CoreDNS Service ClusterIP unreachable.
-
-## Task: Debug Service routing failures: endpoints, kube-proxy, iptables/ipvs symptoms, and fix.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get endpoints <svc>
-kubectl -n kube-system logs ds/kube-proxy --tail=20
-```
-
-Verify:
-```bash
-kubectl run -it --rm curl --image=busybox:1.36 --restart=Never -- wget -qO- <svc>
-```
-
-Tip:
-If iptables mode, check iptables -t nat -L -n | grep <svc>.
-
-## Task: Debug NetworkPolicy blocking traffic: confirm policies selecting pods and adjust to allow required flow.
-in code snippets:  
-Command or YAML:
-```bash
-kubectl get networkpolicy -A
-kubectl describe networkpolicy <np> -n <ns>
-```
-
-Verify:
-```bash
-kubectl run -it --rm tester --image=busybox:1.36 --restart=Never -- curl -s http://<svc> || echo blocked
-```
-
-Tip:
-Add explicit allow rules; empty ingress/egress with policy present denies traffic.
+* explain shows server schema; ensure correct apiVersion.
+* dry-run=client does not contact cluster; still catches syntax errors.
