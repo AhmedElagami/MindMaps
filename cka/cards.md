@@ -1124,6 +1124,19 @@ Pitfalls:
 * Token expires; regenerate with kubeadm token create --print-join-command.
 * Ensure required ports open (6443, 10250).
 
+## Task: Approve pending node client CSRs (bootstrap)
+Tags: domain:cluster-arch action:fix format:kubectl cka:competency:auth card:type:fix time:1m
+Command:
+```bash
+kubectl get csr
+kubectl certificate approve $(kubectl get csr --no-headers | awk '/Pending/{print $1}')
+```
+
+Pitfalls:
+
+* Node authorizer still blocks if node name mismatch; check kubelet `--hostname-override`.
+* For rotated certs stuck in Pending, delete CSR and let kubelet recreate.
+
 ## Task: Upgrade control plane then kubelet/kubectl
 Tags: domain:cluster-arch action:edit format:node-shell
 Command:
@@ -1143,6 +1156,36 @@ Pitfalls:
 
 * Upgrade control plane first; respect version skew (kubelet <= apiserver <= kubeadm).
 * Drain nodes before upgrading kubelet when possible.
+
+## Task: Enable encryption at rest for Secrets
+Tags: domain:cluster-arch action:configure format:node-shell cka:competency:security card:type:do lab:required time:3m
+Command:
+```bash
+sudo cat >/etc/kubernetes/encryption-config.yaml <<'EOF'
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+- resources: ["secrets"]
+  providers:
+  - aescbc:
+      keys:
+      - name: key1
+        secret: $(head -c 32 /dev/urandom | base64)
+  - identity: {}
+EOF
+sudo sed -i 's#--encryption-provider-config=.*#--encryption-provider-config=/etc/kubernetes/encryption-config.yaml#' /etc/kubernetes/manifests/kube-apiserver.yaml
+```
+
+Verify:
+```bash
+kubectl get secrets -A >/tmp/secrets.txt
+sudo hexdump -C /var/lib/etcd/member/snap/db | grep -m1 -i $(echo -n default-token | xxd -p | head -c 8)
+```
+
+Pitfalls:
+
+* kube-apiserver manifest edit restarts static pod; expect brief API blip.
+* Run `kubectl get secrets -A --all-namespaces | xargs -I{} kubectl get {} -o yaml >/dev/null` after enabling to rewrite data with encryption.
 
 ## Task: Renew control-plane certs
 Tags: domain:cluster-arch action:fix format:node-shell
@@ -1236,6 +1279,28 @@ Pitfalls:
 
 * ClusterRoleBinding is cluster-scoped; no -n flag.
 * Avoid granting cluster-admin unless required.
+
+## Task: Build kubeconfig for a new user with client certs
+Tags: domain:rbac action:create format:node-shell cka:competency:auth card:type:do lab:required time:3m
+Command:
+```bash
+openssl genrsa -out dev.key 2048
+openssl req -new -key dev.key -out dev.csr -subj "/CN=dev/O=dev"
+sudo openssl x509 -req -in dev.csr -CA /etc/kubernetes/pki/ca.crt -CAkey /etc/kubernetes/pki/ca.key -CAcreateserial -out dev.crt -days 365
+kubectl config set-credentials dev --client-certificate=dev.crt --client-key=dev.key --embed-certs=true
+kubectl config set-context dev --cluster=kubernetes --user=dev --namespace=dev
+kubectl config use-context dev
+```
+
+Verify:
+```bash
+kubectl --context dev auth can-i list pods
+```
+
+Pitfalls:
+
+* Ensure kubeconfig cluster entry points to correct apiserver and CA.
+* Bind permissions via Role/ClusterRole; without binding, access is denied.
 
 ## Task: Run Pod using a ServiceAccount
 Tags: domain:rbac action:create format:yaml
@@ -1660,7 +1725,7 @@ Pitfalls:
 * Quota breaches block creation; check events for “exceeded quota”.
 * LimitRange defaults apply only when requests/limits omitted.
 
-## Task: Gateway API quick triage
+## Task: Gateway API quick triage (optional/low ROI)
 Tags: domain:net action:debug format:gateway-api
 Fast triage:
 ```bash
@@ -2873,6 +2938,58 @@ Pitfalls:
 * Secrets stored base64 encoded, not encrypted by default.
 * Keep files out of version control.
 
+## Task: Run Pod with restrictive securityContext (no root, drop caps, seccomp)
+Tags: domain:workloads action:create format:kubectl cka:competency:security card:type:do lab:required time:2m
+Command:
+```bash
+kubectl run sc-pod --image=nginx --restart=Never \
+  --overrides '{
+    "spec":{
+      "securityContext":{"runAsUser":1000,"runAsGroup":1000,"fsGroup":2000,"seccompProfile":{"type":"RuntimeDefault"}},
+      "containers":[{
+        "name":"nginx","image":"nginx",
+        "securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"readOnlyRootFilesystem":true}
+      }]
+    }
+  }'
+```
+
+Verify:
+```bash
+kubectl get pod sc-pod -o jsonpath='{.spec.securityContext.runAsUser}{" "}{.spec.containers[0].securityContext.capabilities}{"\n"}'
+```
+
+Pitfalls:
+
+* Some images fail with readOnlyRootFilesystem; add emptyDir for /var/cache if needed.
+* seccomp default may be unset on older clusters; set explicitly as above.
+
+## Task: Handle Pod Security Admission restricted namespace failures
+Tags: domain:workloads action:fix format:kubectl cka:competency:security card:type:fix time:2m
+Fast triage:
+```bash
+kubectl get ns --show-labels | head
+kubectl apply -f pod.yaml
+```
+
+Common causes → fix:
+
+* Cause: Namespace has `pod-security.kubernetes.io/enforce=restricted` and Pod violates rules → Fix: update Pod securityContext (runAsNonRoot, drop ALL, no host namespaces) or deploy to non-enforced ns after risk review.
+  Verify:
+  ```bash
+  kubectl describe ns <ns> | grep pod-security
+  kubectl apply -f pod.yaml
+  ```
+* Cause: Missing PSA labels on new ns → Fix: label explicitly:
+  ```bash
+  kubectl label ns dev pod-security.kubernetes.io/enforce=baseline pod-security.kubernetes.io/audit=baseline pod-security.kubernetes.io/warn=baseline --overwrite
+  ```
+
+Pitfalls:
+
+* PSA errors appear in admission webhook events; check `kubectl describe pod` for detailed violations.
+* Defaulting to privileged namespaces is unsafe; prefer adjusting manifests to meet restricted profile.
+
 ## Task: Consume Secret via envFrom
 Tags: domain:workloads action:configure format:yaml cka:competency:secrets card:type:do time:30s
 Command:
@@ -3254,7 +3371,7 @@ Pitfalls:
 
 * CRDs may not include full schema; rely on examples in operator docs.
 
-## Task: Install operator via Helm
+## Task: Install operator via Helm (optional/low ROI)
 Tags: domain:cluster-arch action:create format:helm cka:competency:crds-operators card:type:do lab:required time:2m
 Command:
 ```bash
@@ -3272,7 +3389,7 @@ Pitfalls:
 
 * Wait for CRDs to register before applying CRs.
 
-## Task: Install operator via Kustomize
+## Task: Install operator via Kustomize (optional/low ROI)
 Tags: domain:cluster-arch action:create format:kustomize cka:competency:crds-operators card:type:do lab:required time:2m
 Command:
 ```bash
@@ -3389,11 +3506,15 @@ kubectl get pods -n kube-system -l k8s-app=kube-dns
 kubectl get pods -n kube-system -l k8s-app=kube-proxy
 kubectl get csidrivers,csinodes,volumeattachments.storage.k8s.io
 sudo systemctl status containerd || sudo systemctl status crio
+ls /etc/cni/net.d
+ip link show cni0 || true
+ip route show | head
 ```
 
 Pitfalls:
 
 * CNI manifests usually in /etc/cni/net.d; broken CNI → pods Pending or No route to host.
+* Missing default route on nodes or absent cni0 bridge indicates CNI not initialized.
 
 ## Task: Helm/Kustomize debugging for cluster components
 Tags: domain:tooling action:observe format:helm cka:competency:cluster-maintenance card:type:verify time:2m
@@ -3539,7 +3660,7 @@ Pitfalls:
 * Service selector mismatch leads to empty endpoints.
 * Wrong ingressClassName leaves resource Unmanaged.
 
-## Task: Gateway API status checks
+## Task: Gateway API status checks (optional/low ROI)
 Tags: domain:net action:verify format:kubectl cka:competency:services-networking card:type:verify time:2m
 Command:
 ```bash
@@ -3764,11 +3885,14 @@ Command:
 kubectl get ds kube-proxy -n kube-system -o wide
 kubectl logs -n kube-system -l k8s-app=kube-proxy --tail=20
 kubectl get cm -n kube-system kube-proxy -o yaml | head
+sudo iptables -t nat -L KUBE-SERVICES -n | head
+sudo ipvsadm -Ln 2>/dev/null | head
 ```
 
 Pitfalls:
 
 * Mode iptables/ipvs mismatch with kernel modules leads to no service VIPs.
+* Missing br_netfilter or disabled MASQUERADE rules can break pod-to-Service traffic.
 
 ## Task: Container logs for CoreDNS issues
 Tags: domain:troubleshoot action:debug format:kubectl cka:competency:cluster-components card:type:verify time:30s
