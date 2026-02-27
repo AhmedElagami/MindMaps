@@ -349,34 +349,34 @@
         - Scale Down Protection
         - Volume Mapping Enforcement
   - Observability and Troubleshooting
-          - Logging
-            - kubectl logs
-            - Cluster logging integrations (EFK/ELK, Loki)
-          - Monitoring
-            - [metrics-server](Cka/MetricsServer.md)
-              - HPA requires metrics-server
-              - Prometheus integration
-            - Prometheus & Grafana
-          - [kubectl Debugging Patterns](Cka/KubectlDebugPatterns.md)
-            - kubectl get/describe
-            - Events
-          - [Debugging Pods](Cka/DebuggingPods.md)
-            - kubectl exec
-            - kubectl debug (ephemeral containers)
-            - crictl and containerd logs
-            - systemd/journald
-          - Node Troubleshooting
-            - kubelet logs
-            - systemd services
-            - Resource pressure detection
-              - MemoryPressure
-              - DiskPressure
-              - PIDPressure
-            - Control plane component logs
-              - kube-apiserver
-              - controller-manager
-              - scheduler
-              - etcd
+      - Logging
+        - kubectl logs
+        - Cluster logging integrations (EFK/ELK, Loki)
+      - Monitoring
+        - [metrics-server](Cka/MetricsServer.md)
+          - HPA requires metrics-server
+          - Prometheus integration
+        - Prometheus & Grafana
+      - [kubectl Debugging Patterns](Cka/KubectlDebugPatterns.md)
+        - kubectl get/describe
+        - Events
+      - [Debugging Pods](Cka/DebuggingPods.md)
+        - kubectl exec
+        - kubectl debug (ephemeral containers)
+        - crictl and containerd logs
+        - systemd/journald
+      - Node Troubleshooting
+        - kubelet logs
+        - systemd services
+        - Resource pressure detection
+          - MemoryPressure
+          - DiskPressure
+          - PIDPressure
+        - Control plane component logs
+          - kube-apiserver
+          - controller-manager
+          - scheduler
+          - etcd
   - Networking and Service Discovery
 	- Container Networking Interface (CNI)
 	  - CNI Fundamentals
